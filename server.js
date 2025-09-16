@@ -758,6 +758,350 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+app.delete('/games/:gameId/tournaments/:tournamentId', async (req, res) => {
+    try {
+        const { gameId, tournamentId } = req.params;
+        const gamesData = await readGames();
+        
+        if (!gamesData.games[gameId]) {
+            return res.status(404).json({ error: 'Spiel nicht gefunden' });
+        }
+
+        if (!gamesData.games[gameId].tournaments[tournamentId]) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        // Delete tournament
+        delete gamesData.games[gameId].tournaments[tournamentId];
+
+        // Reset active tournament if this was the active one
+        if (gamesData.games[gameId].activeTournamentId === tournamentId) {
+            gamesData.games[gameId].activeTournamentId = null;
+        }
+
+        await writeGames(gamesData);
+
+        res.json({
+            message: 'Turnier erfolgreich gelöscht'
+        });
+
+    } catch (error) {
+        console.error('Error deleting tournament:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Reset tournament (clear all participants)
+app.post('/games/:gameId/tournaments/:tournamentId/reset', async (req, res) => {
+    try {
+        const { gameId, tournamentId } = req.params;
+        const gamesData = await readGames();
+        
+        if (!gamesData.games[gameId] || !gamesData.games[gameId].tournaments[tournamentId]) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        const tournament = gamesData.games[gameId].tournaments[tournamentId];
+
+        if (tournament.status !== 'registration') {
+            return res.status(400).json({ error: 'Nur Turniere im Registrierungsstatus können zurückgesetzt werden' });
+        }
+
+        // Reset tournament data
+        tournament.participants = [];
+        tournament.bracket = null;
+        tournament.winner = null;
+        tournament.finishedAt = null;
+        tournament.updatedAt = new Date().toISOString();
+
+        await writeGames(gamesData);
+
+        res.json({
+            message: 'Turnier erfolgreich zurückgesetzt',
+            tournament: tournament
+        });
+
+    } catch (error) {
+        console.error('Error resetting tournament:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Reset match result
+app.post('/games/:gameId/tournaments/:tournamentId/matches/:matchId/reset', async (req, res) => {
+    try {
+        const { gameId, tournamentId, matchId } = req.params;
+        const gamesData = await readGames();
+        
+        const tournament = gamesData.games[gameId]?.tournaments[tournamentId];
+        if (!tournament) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        // Find match in bracket
+        let targetMatch = null;
+        let roundIndex = -1;
+        let matchIndex = -1;
+
+        for (let i = 0; i < tournament.bracket.rounds.length; i++) {
+            const matchIdx = tournament.bracket.rounds[i].findIndex(m => m.id === matchId);
+            if (matchIdx !== -1) {
+                targetMatch = tournament.bracket.rounds[i][matchIdx];
+                roundIndex = i;
+                matchIndex = matchIdx;
+                break;
+            }
+        }
+
+        if (!targetMatch) {
+            return res.status(404).json({ error: 'Match nicht gefunden' });
+        }
+
+        if (targetMatch.status !== 'completed') {
+            return res.status(400).json({ error: 'Match ist noch nicht abgeschlossen' });
+        }
+
+        // Reset match
+        targetMatch.winner = null;
+        targetMatch.score1 = null;
+        targetMatch.score2 = null;
+        targetMatch.status = 'pending';
+        targetMatch.completedAt = null;
+        targetMatch.completedBy = null;
+        targetMatch.pendingResults = [];
+
+        // This is a simplified reset - in a real scenario, you might need to:
+        // 1. Remove players from subsequent rounds
+        // 2. Reset tournament status if it was completed
+        // 3. Update bracket structure appropriately
+        
+        // For now, we'll just reset the match and let admins handle the consequences
+        if (tournament.status === 'finished') {
+            tournament.status = 'started';
+            tournament.finishedAt = null;
+            tournament.winner = null;
+            tournament.bracket.isComplete = false;
+            tournament.bracket.winner = null;
+        }
+
+        await writeGames(gamesData);
+
+        res.json({
+            message: 'Match erfolgreich zurückgesetzt',
+            tournament: tournament
+        });
+
+    } catch (error) {
+        console.error('Error resetting match:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Cancel tournament (delete tournament and reset status)
+app.post('/games/:gameId/tournaments/:tournamentId/cancel', async (req, res) => {
+    try {
+        const { gameId, tournamentId } = req.params;
+        const gamesData = await readGames();
+        
+        if (!gamesData.games[gameId] || !gamesData.games[gameId].tournaments[tournamentId]) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        const tournament = gamesData.games[gameId].tournaments[tournamentId];
+
+        if (tournament.status === 'finished') {
+            return res.status(400).json({ error: 'Beendete Turniere können nicht abgebrochen werden' });
+        }
+
+        // Delete tournament
+        delete gamesData.games[gameId].tournaments[tournamentId];
+
+        // Reset active tournament if this was the active one
+        if (gamesData.games[gameId].activeTournamentId === tournamentId) {
+            gamesData.games[gameId].activeTournamentId = null;
+        }
+
+        await writeGames(gamesData);
+
+        res.json({
+            message: `Turnier "${tournament.name}" wurde abgebrochen und gelöscht`
+        });
+
+    } catch (error) {
+        console.error('Error canceling tournament:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Get tournament participants (additional utility endpoint)
+app.get('/games/:gameId/tournaments/:tournamentId/participants', async (req, res) => {
+    try {
+        const { gameId, tournamentId } = req.params;
+        const gamesData = await readGames();
+        
+        const tournament = gamesData.games[gameId]?.tournaments[tournamentId];
+        if (!tournament) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        res.json({
+            participants: tournament.participants || [],
+            count: tournament.participants?.length || 0
+        });
+
+    } catch (error) {
+        console.error('Error loading participants:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Admin: Force complete tournament (utility endpoint)
+app.post('/games/:gameId/tournaments/:tournamentId/force-complete', async (req, res) => {
+    try {
+        const { gameId, tournamentId } = req.params;
+        const { winnerId } = req.body;
+        
+        const gamesData = await readGames();
+        const tournament = gamesData.games[gameId]?.tournaments[tournamentId];
+        
+        if (!tournament) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        if (!winnerId) {
+            return res.status(400).json({ error: 'Gewinner-ID ist erforderlich' });
+        }
+
+        // Find winner in participants
+        const winner = tournament.participants.find(p => p.id === winnerId);
+        if (!winner) {
+            return res.status(400).json({ error: 'Gewinner nicht in Teilnehmerliste gefunden' });
+        }
+
+        // Force complete tournament
+        tournament.status = 'finished';
+        tournament.finishedAt = new Date().toISOString();
+        tournament.winner = winner;
+        
+        if (tournament.bracket) {
+            tournament.bracket.isComplete = true;
+            tournament.bracket.winner = winner;
+        }
+
+        // Update global user stats
+        await updateUserStats(winner.walletAddress, gameId, true);
+
+        await writeGames(gamesData);
+
+        res.json({
+            message: 'Turnier erfolgreich abgeschlossen',
+            tournament: tournament
+        });
+
+    } catch (error) {
+        console.error('Error force completing tournament:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Export tournament data
+app.get('/games/:gameId/tournaments/:tournamentId/export', async (req, res) => {
+    try {
+        const { gameId, tournamentId } = req.params;
+        const gamesData = await readGames();
+        
+        const tournament = gamesData.games[gameId]?.tournaments[tournamentId];
+        if (!tournament) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        const exportData = {
+            tournamentInfo: {
+                name: tournament.name,
+                description: tournament.description,
+                gameId: gameId,
+                status: tournament.status,
+                createdAt: tournament.createdAt,
+                startedAt: tournament.startedAt,
+                finishedAt: tournament.finishedAt
+            },
+            participants: tournament.participants || [],
+            bracket: tournament.bracket,
+            winner: tournament.winner,
+            exportedAt: new Date().toISOString(),
+            exportedBy: 'admin'
+        };
+
+        res.json(exportData);
+
+    } catch (error) {
+        console.error('Error exporting tournament:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Get admin statistics
+app.get('/admin/stats', async (req, res) => {
+    try {
+        const [gamesData, globalUsers] = await Promise.all([
+            readGames(),
+            readGlobalUsers()
+        ]);
+
+        const stats = {
+            totalUsers: Object.keys(globalUsers.users).length,
+            totalTournaments: 0,
+            activeTournaments: 0,
+            completedTournaments: 0,
+            totalMatches: 0,
+            completedMatches: 0
+        };
+
+        // Calculate tournament and match statistics
+        Object.values(gamesData.games).forEach(game => {
+            if (game.tournaments) {
+                const tournaments = Object.values(game.tournaments);
+                stats.totalTournaments += tournaments.length;
+                
+                tournaments.forEach(tournament => {
+                    if (tournament.status === 'started' || tournament.status === 'registration') {
+                        stats.activeTournaments++;
+                    } else if (tournament.status === 'finished') {
+                        stats.completedTournaments++;
+                    }
+
+                    // Count matches
+                    if (tournament.bracket && tournament.bracket.rounds) {
+                        tournament.bracket.rounds.forEach(round => {
+                            stats.totalMatches += round.length;
+                            stats.completedMatches += round.filter(m => m.status === 'completed').length;
+                        });
+                    }
+                });
+            }
+        });
+
+        // User registration statistics
+        const today = new Date().toDateString();
+        const thisWeek = new Date();
+        thisWeek.setDate(thisWeek.getDate() - 7);
+
+        stats.todayRegistrations = Object.values(globalUsers.users).filter(user => 
+            user.createdAt && new Date(user.createdAt).toDateString() === today
+        ).length;
+
+        stats.weekRegistrations = Object.values(globalUsers.users).filter(user => 
+            user.createdAt && new Date(user.createdAt) > thisWeek
+        ).length;
+
+        res.json(stats);
+
+    } catch (error) {
+        console.error('Error loading admin stats:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
 // Server start
 app.listen(PORT, () => {
     console.log(`Server lÃ¤uft auf http://localhost:${PORT}`);

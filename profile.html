@@ -240,6 +240,37 @@
             opacity: 0.3;
         }
 
+        .registration-container {
+            display: none;
+            background: linear-gradient(145deg, #1a1a2e, #0f0f1a);
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+            max-width: 600px;
+            width: 100%;
+            color: white;
+            position: relative;
+        }
+
+        .registration-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ff88, #00ccff, #00ff88);
+            border-radius: 20px;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .registration-container.visible {
+            display: block;
+            animation: fadeIn 0.8s ease-out;
+        }
+
         .profile-container {
             display: none;
             background: linear-gradient(145deg, #1a1a2e, #0f0f1a);
@@ -435,7 +466,7 @@
             font-style: italic;
         }
 
-        .save-button {
+        .action-button {
             background: linear-gradient(45deg, #00ff88, #00ccff);
             color: #0a0a0a;
             border: none;
@@ -454,7 +485,7 @@
             box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
         }
 
-        .save-button::before {
+        .action-button::before {
             content: '';
             position: absolute;
             top: 0;
@@ -465,16 +496,16 @@
             transition: left 0.5s ease;
         }
 
-        .save-button:hover:not(:disabled) {
+        .action-button:hover:not(:disabled) {
             transform: translateY(-5px) scale(1.02);
             box-shadow: 0 10px 40px rgba(0, 255, 136, 0.5);
         }
 
-        .save-button:hover:not(:disabled)::before {
+        .action-button:hover:not(:disabled)::before {
             left: 100%;
         }
 
-        .save-button:disabled {
+        .action-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
@@ -616,7 +647,7 @@
                 padding: 8px 15px;
             }
 
-            .login-container, .profile-container {
+            .login-container, .registration-container, .profile-container {
                 padding: 30px 20px;
                 margin: 20px;
             }
@@ -671,9 +702,9 @@
         <!-- Login Container -->
         <div class="login-container" id="loginContainer">
             <div class="metamask-logo">🦊</div>
-            <h1>Profil bearbeiten</h1>
+            <h1>Profil verwalten</h1>
             <p class="description">
-                Verbinden Sie Ihre MetaMask Wallet, um Ihr Profil zu bearbeiten.
+                Verbinden Sie Ihre MetaMask Wallet, um Ihr Profil zu bearbeiten oder sich zu registrieren.
             </p>
             
             <button class="connect-button" id="connectButton" onclick="connectWallet()">
@@ -684,7 +715,103 @@
             <div class="success-message" id="successMessage"></div>
         </div>
 
-        <!-- Profile Container -->
+        <!-- Registration Container (new user) -->
+        <div class="registration-container" id="registrationContainer">
+            <div class="profile-avatar">👋</div>
+            <h2>Willkommen! Registrieren Sie sich</h2>
+            <p class="description">
+                Diese Wallet ist noch nicht registriert. Erstellen Sie jetzt Ihr Profil für das MSI Tournament.
+            </p>
+            
+            <!-- Basic Registration -->
+            <div class="form-section">
+                <div class="section-title">
+                    <span>🌟</span>
+                    Basis-Registrierung (Erforderlich)
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="regPlatformUsername">
+                            <span class="platform-icon">👤</span>
+                            Platform Username *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="regPlatformUsername" 
+                            placeholder="Ihr Haupt-Username für das Tournament"
+                            maxlength="50"
+                            required
+                            oninput="updateCharacterCounter('regPlatformUsername')"
+                        >
+                        <div class="character-counter" id="regPlatformUsernameCounter">0/50 Zeichen</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gaming Profiles (Optional) -->
+            <div class="form-section">
+                <div class="section-title">
+                    <span>🎮</span>
+                    Gaming Profile (Optional)
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="regPlaystationGamertag">
+                            <span class="platform-icon">🎮</span>
+                            PlayStation ID
+                        </label>
+                        <input 
+                            type="text" 
+                            id="regPlaystationGamertag" 
+                            placeholder="PlayStation ID (optional)"
+                            maxlength="30"
+                            oninput="updateCharacterCounter('regPlaystationGamertag')"
+                        >
+                        <div class="character-counter" id="regPlaystationGamertagCounter">0/30 Zeichen</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regXboxGamertag">
+                            <span class="platform-icon">🎯</span>
+                            Xbox Gamertag
+                        </label>
+                        <input 
+                            type="text" 
+                            id="regXboxGamertag" 
+                            placeholder="Xbox Gamertag (optional)"
+                            maxlength="30"
+                            oninput="updateCharacterCounter('regXboxGamertag')"
+                        >
+                        <div class="character-counter" id="regXboxGamertagCounter">0/30 Zeichen</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regSteamGamertag">
+                            <span class="platform-icon">🚂</span>
+                            Steam Username
+                        </label>
+                        <input 
+                            type="text" 
+                            id="regSteamGamertag" 
+                            placeholder="Steam Username (optional)"
+                            maxlength="30"
+                            oninput="updateCharacterCounter('regSteamGamertag')"
+                        >
+                        <div class="character-counter" id="regSteamGamertagCounter">0/30 Zeichen</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="action-button" id="registerButton" onclick="registerUser()">
+                <span>🚀</span>
+                Jetzt registrieren
+            </button>
+            
+            <div class="error-message" id="registrationErrorMessage"></div>
+            <div class="success-message" id="registrationSuccessMessage"></div>
+        </div>
+
+        <!-- Profile Container (existing user) -->
         <div class="profile-container" id="profileContainer">
             <div class="profile-avatar" id="profileAvatar">?</div>
             <h2>Profil bearbeiten</h2>
@@ -712,7 +839,7 @@
             <!-- Platform Username -->
             <div class="form-section">
                 <div class="section-title">
-                    <span>🌐</span>
+                    <span>🌟</span>
                     Hauptprofil
                 </div>
                 <div class="form-grid">
@@ -726,10 +853,10 @@
                             type="text" 
                             id="platformUsername" 
                             placeholder="Neuer Platform Username"
-                            maxlength="30"
+                            maxlength="50"
                             oninput="updateCharacterCounter('platformUsername')"
                         >
-                        <div class="character-counter" id="platformUsernameCounter">0/30 Zeichen</div>
+                        <div class="character-counter" id="platformUsernameCounter">0/50 Zeichen</div>
                     </div>
                 </div>
             </div>
@@ -791,7 +918,7 @@
                 </div>
             </div>
 
-            <button class="save-button" id="saveButton" onclick="saveProfile()">
+            <button class="action-button" id="saveButton" onclick="saveProfile()">
                 <span>💾</span>
                 Profil speichern
             </button>
@@ -804,6 +931,7 @@
     <script>
         let currentUser = null;
         let originalUserData = null;
+        let connectedWallet = null;
 
         // Check if MetaMask is installed
         function isMetaMaskInstalled() {
@@ -886,22 +1014,20 @@
                     originalUserData = JSON.parse(JSON.stringify(userData)); // Deep copy
                     
                     displayUserProfile(userData);
-                    return true;
+                    return { success: true, user: userData };
                 } else {
-                    showError('Benutzer nicht gefunden. Bitte registrieren Sie sich zuerst.');
-                    return false;
+                    return { success: false, notFound: true };
                 }
             } catch (error) {
                 console.error('Error loading user profile:', error);
-                showError('Fehler beim Laden des Profils.');
-                return false;
+                return { success: false, error: 'Netzwerkfehler' };
             }
         }
 
         // Display user profile data
         function displayUserProfile(userData) {
             // Update avatar
-            document.getElementById('profileAvatar').textContent = getInitial(userData.platformUsername);
+            document.getElementById('profileAvatar').textContent = getInitial(userData.platformUsername || userData.username);
             
             // Update stats
             document.getElementById('totalWins').textContent = userData.stats.totalWins || 0;
@@ -915,17 +1041,18 @@
             document.getElementById('codStats').textContent = codWins;
             
             // Update current values
-            document.getElementById('currentPlatformUsername').textContent = userData.platformUsername || 'Nicht gesetzt';
-            document.getElementById('currentPlatformUsername').className = userData.platformUsername ? 'current-value' : 'current-value empty';
+            const displayUsername = userData.platformUsername || userData.username;
+            document.getElementById('currentPlatformUsername').textContent = displayUsername || 'Nicht gesetzt';
+            document.getElementById('currentPlatformUsername').className = displayUsername ? 'current-value' : 'current-value empty';
             
-            document.getElementById('currentPlaystation').textContent = userData.gamertags.playstation || 'Nicht gesetzt';
-            document.getElementById('currentPlaystation').className = userData.gamertags.playstation ? 'current-value' : 'current-value empty';
+            document.getElementById('currentPlaystation').textContent = userData.gamertags?.playstation || 'Nicht gesetzt';
+            document.getElementById('currentPlaystation').className = userData.gamertags?.playstation ? 'current-value' : 'current-value empty';
             
-            document.getElementById('currentXbox').textContent = userData.gamertags.xbox || 'Nicht gesetzt';
-            document.getElementById('currentXbox').className = userData.gamertags.xbox ? 'current-value' : 'current-value empty';
+            document.getElementById('currentXbox').textContent = userData.gamertags?.xbox || 'Nicht gesetzt';
+            document.getElementById('currentXbox').className = userData.gamertags?.xbox ? 'current-value' : 'current-value empty';
             
-            document.getElementById('currentSteam').textContent = userData.gamertags.steam || 'Nicht gesetzt';
-            document.getElementById('currentSteam').className = userData.gamertags.steam ? 'current-value' : 'current-value empty';
+            document.getElementById('currentSteam').textContent = userData.gamertags?.steam || 'Nicht gesetzt';
+            document.getElementById('currentSteam').className = userData.gamertags?.steam ? 'current-value' : 'current-value empty';
             
             // Set input placeholders with current values
             const platformInput = document.getElementById('platformUsername');
@@ -933,10 +1060,10 @@
             const xboxInput = document.getElementById('xboxGamertag');
             const steamInput = document.getElementById('steamGamertag');
             
-            platformInput.placeholder = userData.platformUsername ? `Aktuell: ${userData.platformUsername}` : 'Neuer Platform Username';
-            psInput.placeholder = userData.gamertags.playstation ? `Aktuell: ${userData.gamertags.playstation}` : 'PlayStation ID eingeben';
-            xboxInput.placeholder = userData.gamertags.xbox ? `Aktuell: ${userData.gamertags.xbox}` : 'Xbox Gamertag eingeben';
-            steamInput.placeholder = userData.gamertags.steam ? `Aktuell: ${userData.gamertags.steam}` : 'Steam Username eingeben';
+            platformInput.placeholder = displayUsername ? `Aktuell: ${displayUsername}` : 'Neuer Platform Username';
+            psInput.placeholder = userData.gamertags?.playstation ? `Aktuell: ${userData.gamertags.playstation}` : 'PlayStation ID eingeben';
+            xboxInput.placeholder = userData.gamertags?.xbox ? `Aktuell: ${userData.gamertags.xbox}` : 'Xbox Gamertag eingeben';
+            steamInput.placeholder = userData.gamertags?.steam ? `Aktuell: ${userData.gamertags.steam}` : 'Steam Username eingeben';
             
             // Initialize character counters
             updateCharacterCounter('platformUsername');
@@ -945,21 +1072,50 @@
             updateCharacterCounter('steamGamertag');
         }
 
-        // Update UI when connected
+        // Show appropriate container based on user state
+        function showContainer(containerName) {
+            // Hide all containers
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('registrationContainer').classList.remove('visible');
+            document.getElementById('profileContainer').classList.remove('visible');
+            
+            // Show the requested container
+            switch (containerName) {
+                case 'login':
+                    document.getElementById('loginContainer').style.display = 'block';
+                    break;
+                case 'registration':
+                    document.getElementById('registrationContainer').classList.add('visible');
+                    break;
+                case 'profile':
+                    document.getElementById('profileContainer').classList.add('visible');
+                    break;
+            }
+        }
+
+        // Update UI after wallet connection
         async function updateConnectedUI(account) {
+            connectedWallet = account;
+            
             // Show user info in header
             document.getElementById('walletAddress').textContent = formatAddress(account);
             document.getElementById('userInfo').classList.add('visible');
             
             // Try to load user profile
-            const profileLoaded = await loadUserProfile(account);
+            const profileResult = await loadUserProfile(account);
             
-            if (profileLoaded) {
-                // Hide login container, show profile
-                document.getElementById('loginContainer').style.display = 'none';
-                document.getElementById('profileContainer').classList.add('visible');
+            if (profileResult.success) {
+                // User exists - show profile editing interface
+                showContainer('profile');
+                showSuccess(`Willkommen zurück, ${profileResult.user.platformUsername || profileResult.user.username}!`);
+            } else if (profileResult.notFound) {
+                // New user - show registration interface
+                showContainer('registration');
+                showSuccess('Wallet verbunden! Bitte vervollständigen Sie Ihre Registrierung.');
             } else {
-                showError('Profil konnte nicht geladen werden. Bitte registrieren Sie sich zuerst auf der Hauptseite.');
+                // Error loading profile
+                showError('Fehler beim Laden des Profils. Bitte versuchen Sie es erneut.');
+                showContainer('login');
             }
         }
 
@@ -967,16 +1123,19 @@
         function updateDisconnectedUI() {
             currentUser = null;
             originalUserData = null;
+            connectedWallet = null;
             
             // Hide user info in header
             document.getElementById('userInfo').classList.remove('visible');
             
-            // Show login container, hide profile
-            document.getElementById('loginContainer').style.display = 'block';
-            document.getElementById('profileContainer').classList.remove('visible');
+            // Show login container
+            showContainer('login');
             
+            // Clear all error and success messages
             hideError();
             hideSuccess();
+            hideError('registrationErrorMessage');
+            hideSuccess('registrationSuccessMessage');
             hideError('profileErrorMessage');
             hideSuccess('profileSuccessMessage');
         }
@@ -1020,6 +1179,84 @@
             }
         }
 
+        // Register new user
+        async function registerUser() {
+            if (!connectedWallet) {
+                showError('Nicht mit MetaMask verbunden.', 'registrationErrorMessage');
+                return;
+            }
+
+            // Get form values
+            const platformUsername = document.getElementById('regPlatformUsername').value.trim();
+            const playstationGamertag = document.getElementById('regPlaystationGamertag').value.trim();
+            const xboxGamertag = document.getElementById('regXboxGamertag').value.trim();
+            const steamGamertag = document.getElementById('regSteamGamertag').value.trim();
+
+            // Validate required fields
+            if (!platformUsername) {
+                showError('Platform Username ist erforderlich.', 'registrationErrorMessage');
+                return;
+            }
+
+            if (platformUsername.length < 2) {
+                showError('Platform Username muss mindestens 2 Zeichen lang sein.', 'registrationErrorMessage');
+                return;
+            }
+
+            try {
+                hideError('registrationErrorMessage');
+                hideSuccess('registrationSuccessMessage');
+                
+                const registerButton = document.getElementById('registerButton');
+                registerButton.innerHTML = '<span>⏳</span>Registriere...';
+                registerButton.disabled = true;
+
+                // Prepare registration data
+                const registrationData = {
+                    walletAddress: connectedWallet,
+                    platformUsername: platformUsername,
+                    gamertags: {
+                        playstation: playstationGamertag,
+                        xbox: xboxGamertag,
+                        steam: steamGamertag
+                    }
+                };
+
+                const response = await fetch('https://msi-38e5.onrender.com/user/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(registrationData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showSuccess('Registrierung erfolgreich! Sie werden zum Profil weitergeleitet...', 'registrationSuccessMessage');
+                    
+                    // Wait a moment then switch to profile view
+                    setTimeout(async () => {
+                        currentUser = result.user;
+                        originalUserData = JSON.parse(JSON.stringify(result.user));
+                        displayUserProfile(result.user);
+                        showContainer('profile');
+                        showSuccess('Willkommen beim MSI Tournament!', 'profileSuccessMessage');
+                    }, 2000);
+                    
+                } else {
+                    const error = await response.json();
+                    showError('Registrierung fehlgeschlagen: ' + error.error, 'registrationErrorMessage');
+                }
+            } catch (error) {
+                console.error('Error registering user:', error);
+                showError('Netzwerkfehler bei der Registrierung.', 'registrationErrorMessage');
+            } finally {
+                const registerButton = document.getElementById('registerButton');
+                registerButton.innerHTML = '<span>🚀</span>Jetzt registrieren';
+                registerButton.disabled = false;
+            }
+        }
+
         // Save profile changes
         async function saveProfile() {
             if (!currentUser) {
@@ -1034,11 +1271,12 @@
             const steamGamertag = document.getElementById('steamGamertag').value.trim();
 
             // Check if any changes were made
+            const currentPlatformUsername = originalUserData.platformUsername || originalUserData.username;
             const hasChanges = 
-                (platformUsername && platformUsername !== originalUserData.platformUsername) ||
-                (playstationGamertag !== originalUserData.gamertags.playstation) ||
-                (xboxGamertag !== originalUserData.gamertags.xbox) ||
-                (steamGamertag !== originalUserData.gamertags.steam);
+                (platformUsername && platformUsername !== currentPlatformUsername) ||
+                (playstationGamertag !== (originalUserData.gamertags?.playstation || '')) ||
+                (xboxGamertag !== (originalUserData.gamertags?.xbox || '')) ||
+                (steamGamertag !== (originalUserData.gamertags?.steam || ''));
 
             if (!hasChanges) {
                 showError('Keine Änderungen erkannt.', 'profileErrorMessage');
@@ -1046,8 +1284,8 @@
             }
 
             // Validate platform username if provided
-            if (platformUsername && platformUsername.length === 0) {
-                showError('Platform Username darf nicht leer sein.', 'profileErrorMessage');
+            if (platformUsername && platformUsername.length < 2) {
+                showError('Platform Username muss mindestens 2 Zeichen lang sein.', 'profileErrorMessage');
                 return;
             }
 
@@ -1062,7 +1300,7 @@
                 // Prepare update data
                 const updateData = {
                     walletAddress: currentUser.walletAddress,
-                    platformUsername: platformUsername || originalUserData.platformUsername,
+                    platformUsername: platformUsername || currentPlatformUsername,
                     gamertags: {
                         playstation: playstationGamertag,
                         xbox: xboxGamertag,
@@ -1148,6 +1386,12 @@
                     window.location.reload();
                 });
             }
+
+            // Initialize character counters for registration form
+            updateCharacterCounter('regPlatformUsername');
+            updateCharacterCounter('regPlaystationGamertag');
+            updateCharacterCounter('regXboxGamertag');
+            updateCharacterCounter('regSteamGamertag');
         }
 
         // Initialize on page load
@@ -1155,3 +1399,4 @@
     </script>
 </body>
 </html>
+                
