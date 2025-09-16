@@ -369,12 +369,12 @@ app.post('/games/:gameId/tournaments/:tournamentId/register', async (req, res) =
         const tournament = gamesData.games[gameId].tournaments[tournamentId];
 
         if (tournament.status !== 'registration') {
-            return res.status(400).json({ error: 'Registrierung fÃ¼r dieses Turnier ist geschlossen' });
+            return res.status(400).json({ error: 'Registrierung für dieses Turnier ist geschlossen' });
         }
 
         // Check if already registered
         if (tournament.participants.find(p => p.walletAddress.toLowerCase() === walletAddress.toLowerCase())) {
-            return res.status(400).json({ error: 'Bereits fÃ¼r dieses Turnier registriert' });
+            return res.status(400).json({ error: 'Bereits für dieses Turnier registriert' });
         }
 
         // Add participant
@@ -390,12 +390,63 @@ app.post('/games/:gameId/tournaments/:tournamentId/register', async (req, res) =
         await writeGames(gamesData);
 
         res.status(201).json({
-            message: 'Erfolgreich fÃ¼r Turnier registriert',
+            message: 'Erfolgreich für Turnier registriert',
             tournament: tournament
         });
 
     } catch (error) {
         console.error('Fehler bei der Turnier-Registrierung:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+
+// Unregister from tournament
+app.post('/games/:gameId/tournaments/:tournamentId/unregister', async (req, res) => {
+    try {
+        const { gameId, tournamentId } = req.params;
+        const { walletAddress } = req.body;
+
+        if (!walletAddress) {
+            return res.status(400).json({ error: 'Wallet-Adresse ist erforderlich' });
+        }
+
+        const gamesData = await readGames();
+        
+        if (!gamesData.games[gameId]) {
+            return res.status(404).json({ error: 'Spiel nicht gefunden' });
+        }
+
+        if (!gamesData.games[gameId].tournaments[tournamentId]) {
+            return res.status(404).json({ error: 'Turnier nicht gefunden' });
+        }
+
+        const tournament = gamesData.games[gameId].tournaments[tournamentId];
+
+        if (tournament.status !== 'registration') {
+            return res.status(400).json({ error: 'Abmeldung nur während der Registrierungsphase möglich' });
+        }
+
+        // Find participant
+        const participantIndex = tournament.participants.findIndex(p => 
+            p.walletAddress.toLowerCase() === walletAddress.toLowerCase()
+        );
+
+        if (participantIndex === -1) {
+            return res.status(400).json({ error: 'Nicht für dieses Turnier registriert' });
+        }
+
+        // Remove participant
+        tournament.participants.splice(participantIndex, 1);
+
+        await writeGames(gamesData);
+
+        res.json({
+            message: 'Erfolgreich vom Turnier abgemeldet',
+            tournament: tournament
+        });
+
+    } catch (error) {
+        console.error('Fehler bei der Turnier-Abmeldung:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
 });
@@ -464,7 +515,7 @@ app.post('/games/:gameId/tournaments/:tournamentId/start', async (req, res) => {
         const tournament = gamesData.games[gameId].tournaments[tournamentId];
 
         if (tournament.participants.length < 2) {
-            return res.status(400).json({ error: 'Mindestens 2 Spieler mÃ¼ssen registriert sein' });
+            return res.status(400).json({ error: 'Mindestens 2 Spieler müssen registriert sein' });
         }
         
         if (tournament.status === 'started') {
@@ -654,7 +705,7 @@ app.post('/games/:gameId/tournaments/:tournamentId/matches/:matchId/result', asy
             targetMatch.winner = targetMatch.score1 > targetMatch.score2 ? targetMatch.player1 : targetMatch.player2;
         } else if (winnerId) {
             if (winnerId !== targetMatch.player1.id && winnerId !== targetMatch.player2.id) {
-                return res.status(400).json({ error: 'UngÃ¼ltige Gewinner-ID' });
+                return res.status(400).json({ error: 'Ungültige Gewinner-ID' });
             }
             targetMatch.winner = winnerId === targetMatch.player1.id ? targetMatch.player1 : targetMatch.player2;
         } else {
@@ -1104,7 +1155,7 @@ app.get('/admin/stats', async (req, res) => {
 
 // Server start
 app.listen(PORT, () => {
-    console.log(`Server lÃ¤uft auf http://localhost:${PORT}`);
+    console.log(`Server läuft auf http://localhost:${PORT}`);
     console.log(`Admin-Bereich: http://localhost:${PORT}/admin.html`);
     console.log(`Turnierbaum: http://localhost:${PORT}/tournament.html`);
 });
