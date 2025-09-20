@@ -649,7 +649,6 @@ app.post('/games/:gameId/tournaments/:tournamentId/unregister', async (req, res)
 app.post('/games/:gameId/tournaments', async (req, res) => {
     try {
         const { gameId } = req.params;
-        const { name, description } = req.body;
 		const { name, description, autoStartPlayerCount } = req.body;
 
         if (!name) {
