@@ -742,12 +742,17 @@
             const opponent = isPlayer1 ? match.player2 : match.player1;
             const scoreLabel = getScoreLabel(tournament.gameId);
 
-            const hasPendingResult = match.pendingResults && match.pendingResults.some(r => 
-                r.submittedBy === myPlayer.id
+            // Find my participant ID in the tournament
+            const myParticipant = tournament.participants.find(p => 
+                p.walletAddress.toLowerCase() === currentUser.walletAddress.toLowerCase()
+            );
+
+            const hasPendingResult = match.pendingResults && myParticipant && match.pendingResults.some(r => 
+                r.submittedBy === myParticipant.id
             );
 
             if (hasPendingResult) {
-                const myResult = match.pendingResults.find(r => r.submittedBy === myPlayer.id);
+                const myResult = match.pendingResults.find(r => r.submittedBy === myParticipant.id);
                 const displayScore = isPlayer1 ? `${myResult.score1}:${myResult.score2}` : `${myResult.score2}:${myResult.score1}`;
                 
                 return `
@@ -755,12 +760,12 @@
                         <div class="match-title">🔥 Dein aktuelles Match</div>
                         <div class="match-players">
                             <div class="player-box current-user">
-                                <strong>${myPlayer.platformUsername || myPlayer.username}</strong>
+                                <strong>${myPlayer.platformUsername || myPlayer.username || 'Spieler 1'}</strong>
                                 <div>Du</div>
                             </div>
                             <div class="vs-text">VS</div>
                             <div class="player-box">
-                                <strong>${opponent.platformUsername || opponent.username}</strong>
+                                <strong>${opponent.platformUsername || opponent.username || 'Spieler 2'}</strong>
                                 <div>Gegner</div>
                             </div>
                         </div>
@@ -776,12 +781,12 @@
                         <div class="match-title">🔥 Dein aktuelles Match</div>
                         <div class="match-players">
                             <div class="player-box current-user">
-                                <strong>${myPlayer.platformUsername || myPlayer.username}</strong>
+                                <strong>${myPlayer.platformUsername || myPlayer.username || 'Spieler 1'}</strong>
                                 <div>Du</div>
                             </div>
                             <div class="vs-text">VS</div>
                             <div class="player-box">
-                                <strong>${opponent.platformUsername || opponent.username}</strong>
+                                <strong>${opponent.platformUsername || opponent.username || 'Spieler 2'}</strong>
                                 <div>Gegner</div>
                             </div>
                         </div>
@@ -829,13 +834,24 @@
             const score2 = isPlayer1 ? parseInt(opponentScore) : parseInt(myScore);
 
             try {
+                // Find the participant ID for this user in the tournament
+                const tournament = myTournaments.find(t => t.id === tournamentId);
+                const participant = tournament.participants.find(p => 
+                    p.walletAddress.toLowerCase() === currentUser.walletAddress.toLowerCase()
+                );
+                
+                if (!participant) {
+                    showMessage('Teilnehmer nicht gefunden.', 'error');
+                    return;
+                }
+
                 const response = await fetch(`https://msi-38e5.onrender.com/games/${gameId}/tournaments/${tournamentId}/matches/${matchId}/submit-result`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        submittedBy: currentUser.id,
+                        submittedBy: participant.id,
                         walletAddress: currentUser.walletAddress,
                         score1: score1,
                         score2: score2
