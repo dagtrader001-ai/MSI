@@ -937,146 +937,183 @@
 
         // Display my match
         function displayMyMatch() {
-            document.getElementById('myMatchSection').classList.add('visible');
+    document.getElementById('myMatchSection').classList.add('visible');
+    
+    const isPlayer1 = myCurrentMatch.player1.id === currentUser.id;
+    const myPlayer = isPlayer1 ? myCurrentMatch.player1 : myCurrentMatch.player2;
+    const opponent = isPlayer1 ? myCurrentMatch.player2 : myCurrentMatch.player1;
+    
+    document.getElementById('myName').textContent = myPlayer.platformUsername || myPlayer.username;
+    document.getElementById('opponentName').textContent = opponent.platformUsername || opponent.username;
+    
+    // Spiel-spezifische Labels setzen
+    const scoreLabel = getScoreLabel(tournamentData.gameId);
+    document.querySelector('label[for="myScore"]').textContent = `Deine ${scoreLabel}`;
+    document.querySelector('label[for="opponentScore"]').textContent = `Gegner ${scoreLabel}`;
+    
+    // Rest der Funktion bleibt gleich...
+    if (myCurrentMatch.pendingResults && myCurrentMatch.pendingResults.length > 0) {
+        const myResult = myCurrentMatch.pendingResults.find(r => r.submittedBy === currentUser.id);
+        const opponentResult = myCurrentMatch.pendingResults.find(r => r.submittedBy === opponent.id);
+        
+        if (myResult && !opponentResult) {
+            document.getElementById('scoreInputSection').style.display = 'none';
+            document.getElementById('pendingResult').style.display = 'block';
+            document.getElementById('conflictWarning').style.display = 'none';
             
-            const isPlayer1 = myCurrentMatch.player1.id === currentUser.id;
-            const myPlayer = isPlayer1 ? myCurrentMatch.player1 : myCurrentMatch.player2;
-            const opponent = isPlayer1 ? myCurrentMatch.player2 : myCurrentMatch.player1;
+            const scoreText = isPlayer1 
+                ? `${myResult.score1}:${myResult.score2}`
+                : `${myResult.score2}:${myResult.score1}`;
+            document.getElementById('pendingScore').textContent = scoreText;
             
-            document.getElementById('myName').textContent = myPlayer.username;
-            document.getElementById('opponentName').textContent = opponent.username;
-            
-            // Check for pending results
-            if (myCurrentMatch.pendingResults && myCurrentMatch.pendingResults.length > 0) {
-                const myResult = myCurrentMatch.pendingResults.find(r => r.submittedBy === currentUser.id);
-                const opponentResult = myCurrentMatch.pendingResults.find(r => r.submittedBy === opponent.id);
-                
-                if (myResult && !opponentResult) {
-                    // Waiting for opponent
-                    document.getElementById('scoreInputSection').style.display = 'none';
-                    document.getElementById('pendingResult').style.display = 'block';
-                    document.getElementById('conflictWarning').style.display = 'none';
-                    
-                    const scoreText = isPlayer1 
-                        ? `${myResult.score1}:${myResult.score2}`
-                        : `${myResult.score2}:${myResult.score1}`;
-                    document.getElementById('pendingScore').textContent = scoreText;
-                    
-                } else if (myResult && opponentResult && myResult.conflict) {
-                    // Conflict exists
-                    document.getElementById('scoreInputSection').style.display = 'none';
-                    document.getElementById('pendingResult').style.display = 'none';
-                    document.getElementById('conflictWarning').style.display = 'block';
-                } else if (myResult) {
-                    // Already submitted, waiting for processing
-                    document.getElementById('scoreInputSection').style.display = 'none';
-                    document.getElementById('pendingResult').style.display = 'block';
-                    document.getElementById('conflictWarning').style.display = 'none';
-                } else {
-                    // Can submit
-                    document.getElementById('scoreInputSection').style.display = 'block';
-                    document.getElementById('pendingResult').style.display = 'none';
-                    document.getElementById('conflictWarning').style.display = 'none';
-                }
-            } else {
-                // No pending results
-                document.getElementById('scoreInputSection').style.display = 'block';
-                document.getElementById('pendingResult').style.display = 'none';
-                document.getElementById('conflictWarning').style.display = 'none';
-            }
+        } else if (myResult && opponentResult && myResult.conflict) {
+            document.getElementById('scoreInputSection').style.display = 'none';
+            document.getElementById('pendingResult').style.display = 'none';
+            document.getElementById('conflictWarning').style.display = 'block';
+        } else if (myResult) {
+            document.getElementById('scoreInputSection').style.display = 'none';
+            document.getElementById('pendingResult').style.display = 'block';
+            document.getElementById('conflictWarning').style.display = 'none';
+        } else {
+            document.getElementById('scoreInputSection').style.display = 'block';
+            document.getElementById('pendingResult').style.display = 'none';
+            document.getElementById('conflictWarning').style.display = 'none';
         }
+    } else {
+        document.getElementById('scoreInputSection').style.display = 'block';
+        document.getElementById('pendingResult').style.display = 'none';
+        document.getElementById('conflictWarning').style.display = 'none';
+    }
+}
 
         // Submit match result
         async function submitMatchResult() {
-            if (!myCurrentMatch || !currentUser) {
-                showMessage('Kein aktives Spiel gefunden.', 'error');
-                return;
-            }
+    if (!myCurrentMatch || !currentUser) {
+        showMessage('Kein aktives Spiel gefunden.', 'error');
+        return;
+    }
 
-            const myScore = document.getElementById('myScore').value;
-            const opponentScore = document.getElementById('opponentScore').value;
+    const myScore = document.getElementById('myScore').value;
+    const opponentScore = document.getElementById('opponentScore').value;
 
-            if (myScore === '' || opponentScore === '') {
-                showMessage('Bitte beide Spielstände eingeben.', 'error');
-                return;
-            }
+    if (myScore === '' || opponentScore === '') {
+        showMessage('Bitte beide Spielstände eingeben.', 'error');
+        return;
+    }
 
-            if (myScore === opponentScore) {
-                showMessage('Unentschieden sind nicht erlaubt. Es muss einen Gewinner geben.', 'error');
-                return;
-            }
+    if (myScore === opponentScore) {
+        showMessage('Unentschieden sind nicht erlaubt. Es muss einen Gewinner geben.', 'error');
+        return;
+    }
 
-            const isPlayer1 = myCurrentMatch.player1.id === currentUser.id;
-            const score1 = isPlayer1 ? parseInt(myScore) : parseInt(opponentScore);
-            const score2 = isPlayer1 ? parseInt(opponentScore) : parseInt(myScore);
+    const isPlayer1 = myCurrentMatch.player1.id === currentUser.id;
+    const score1 = isPlayer1 ? parseInt(myScore) : parseInt(opponentScore);
+    const score2 = isPlayer1 ? parseInt(opponentScore) : parseInt(myScore);
 
-            try {
-                const response = await fetch(`https://msi-38e5.onrender.com/tournament/match/${myCurrentMatch.id}/submit-result`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        submittedBy: currentUser.id,
-                        walletAddress: currentUser.walletAddress,
-                        score1: score1,
-                        score2: score2
-                    })
-                });
+    try {
+        // KORRIGIERTE API-URL - benötigt gameId und tournamentId
+        const response = await fetch(`https://msi-38e5.onrender.com/games/${tournamentData.gameId}/tournaments/${tournamentData.id}/matches/${myCurrentMatch.id}/submit-result`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                submittedBy: currentUser.id,
+                walletAddress: currentUser.walletAddress,
+                score1: score1,
+                score2: score2
+            })
+        });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    showMessage(data.message, 'success');
-                    
-                    // Clear inputs
-                    document.getElementById('myScore').value = '';
-                    document.getElementById('opponentScore').value = '';
-                    
-                    // Reload tournament data
-                    await loadTournamentData();
-                } else {
-                    const error = await response.json();
-                    showMessage(error.error || 'Fehler beim Einreichen des Ergebnisses.', 'error');
-                }
-            } catch (error) {
-                console.error('Error submitting result:', error);
-                showMessage('Netzwerkfehler beim Einreichen. Überprüfen Sie die Serververbindung.', 'error');
-            }
+        if (response.ok) {
+            const data = await response.json();
+            showMessage(data.message, 'success');
+            
+            // Clear inputs
+            document.getElementById('myScore').value = '';
+            document.getElementById('opponentScore').value = '';
+            
+            // Reload tournament data
+            await loadTournamentData();
+        } else {
+            const error = await response.json();
+            showMessage(error.error || 'Fehler beim Einreichen des Ergebnisses.', 'error');
         }
+    } catch (error) {
+        console.error('Error submitting result:', error);
+        showMessage('Netzwerkfehler beim Einreichen. Überprüfen Sie die Serververbindung.', 'error');
+    }
+}
 
-        // Load tournament data
-        async function loadTournamentData() {
+// Spiel-spezifische Labels:
+function getScoreLabel(gameId) {
+    switch(gameId?.toLowerCase()) {
+        case 'fifa': return 'Tore';
+        case 'cod': return 'Kills';
+        case 'chess': return 'Punkte';
+        default: return 'Punkte';
+    }
+}
+
+       async function loadTournamentData() {
+    try {
+        // Versuche für alle verfügbaren Spiele Turniere zu laden
+        const games = ['fifa', 'cod', 'chess'];
+        let activeTournament = null;
+        
+        for (const gameId of games) {
             try {
-                const response = await fetch('https://msi-38e5.onrender.com/tournament');
-                
+                const response = await fetch(`https://msi-38e5.onrender.com/games/${gameId}`);
                 if (response.ok) {
-                    const data = await response.json();
-                    tournamentData = data.tournament;
+                    const gameData = await response.json();
                     
-                    updateTournamentStatus(data);
-                    displayBracket();
+                    // Finde aktives Turnier
+                    const tournaments = Object.values(gameData.tournaments || {});
+                    const active = tournaments.find(t => t.status === 'started');
                     
-                    if (currentUser) {
-                        findMyCurrentMatch();
+                    if (active) {
+                        activeTournament = {
+                            ...active,
+                            gameId: gameId,
+                            gameName: gameData.name
+                        };
+                        break;
                     }
-                } else {
-                    console.error('Failed to load tournament data:', response.status);
-                    document.getElementById('bracketContainer').innerHTML = `
-                        <div style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 2rem;">
-                            Fehler beim Laden der Turnierdaten (Server Status: ${response.status})
-                        </div>
-                    `;
                 }
-            } catch (error) {
-                console.error('Error loading tournament:', error);
-                document.getElementById('bracketContainer').innerHTML = `
-                    <div style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 2rem;">
-                        Fehler beim Laden der Turnierdaten<br>
-                        <small>Ist der Server unter localhost:3000 erreichbar?</small>
-                    </div>
-                `;
+            } catch (err) {
+                console.log(`No active tournament for ${gameId}`);
             }
         }
+        
+        if (activeTournament) {
+            tournamentData = activeTournament;
+            updateTournamentStatus({
+                tournament: tournamentData,
+                totalPlayers: tournamentData.participants?.length || 0
+            });
+            displayBracket();
+            
+            if (currentUser) {
+                findMyCurrentMatch();
+            }
+        } else {
+            console.error('No active tournament found');
+            document.getElementById('bracketContainer').innerHTML = `
+                <div style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 2rem;">
+                    Kein aktives Turnier gefunden.
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading tournament:', error);
+        document.getElementById('bracketContainer').innerHTML = `
+            <div style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 2rem;">
+                Fehler beim Laden der Turnierdaten<br>
+                <small>Ist der Server erreichbar?</small>
+            </div>
+        `;
+    }
+}
 
         // Update tournament status
         function updateTournamentStatus(data) {
