@@ -1002,6 +1002,15 @@
                                 ${tournament.description}
                             </div>
                         ` : ''}
+						
+						${tournament.autoStartPlayerCount ? `
+    <div style="background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05)); 
+                border: 1px solid #ffd700; border-radius: 10px; padding: 0.8rem; margin: 1rem 0; 
+                color: #ffd700; font-size: 0.9rem; text-align: center; font-weight: bold;">
+        ⚡ Startet automatisch bei ${tournament.autoStartPlayerCount} Spielern!<br>
+        <small style="opacity: 0.8;">${tournament.participants.length}/${tournament.autoStartPlayerCount} angemeldet</small>
+    </div>
+` : ''}
                         
                         <div class="participants-section">
                             <div class="participants-header">

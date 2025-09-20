@@ -1114,6 +1114,18 @@
                     <label for="tournamentDescription">Beschreibung (optional)</label>
                     <textarea id="tournamentDescription" placeholder="Beschreibung des Turniers..." rows="3"></textarea>
                 </div>
+				<div class="form-group">
+					<label for="autoStartPlayers">Automatischer Start (optional)</label>
+					<select id="autoStartPlayers" style="width: 100%; padding: 1rem; border: 2px solid #333; border-radius: 15px; background: linear-gradient(145deg, #2a2a3e, #1a1a2e); color: white; font-size: 1rem;">
+						<option value="">Manueller Start</option>
+						<option value="2">Auto-Start bei 2 Spielern</option>
+						<option value="4">Auto-Start bei 4 Spielern</option>
+						<option value="8">Auto-Start bei 8 Spielern</option>
+						<option value="16">Auto-Start bei 16 Spielern</option>
+						<option value="32">Auto-Start bei 32 Spielern</option>
+						<option value="64">Auto-Start bei 64 Spielern</option>
+					</select>
+				</div>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeCreateTournamentModal()">Abbrechen</button>
                     <button type="submit" class="action-btn">Turnier erstellen</button>
@@ -1504,6 +1516,15 @@ function getScoreLabel(gameId) {
                                             <span>Teilnehmer: ${tournament.participants?.length || 0}</span>
                                             <span>Erstellt: ${formatDate(tournament.createdAt)}</span>
                                         </div>
+										${tournament.autoStartPlayerCount ? `
+    <div style="background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05)); 
+                border: 1px solid #ffd700; border-radius: 10px; padding: 0.8rem; margin: 0.5rem 0; 
+                color: #ffd700; font-size: 0.9rem; text-align: center;">
+        🚀 Auto-Start bei ${tournament.autoStartPlayerCount} Spielern 
+        (${tournament.participants?.length || 0}/${tournament.autoStartPlayerCount})
+        ${tournament.participants?.length >= tournament.autoStartPlayerCount ? ' - Startet automatisch!' : ''}
+    </div>
+` : ''}
                                         <div class="tournament-actions">
                                             ${tournament.status === 'registration' ? 
                                                 `<button class="action-btn" onclick="startTournament('${game.id}', '${tournament.id}')" ${(tournament.participants?.length || 0) < 2 ? 'disabled' : ''}>
@@ -1634,6 +1655,7 @@ function getScoreLabel(gameId) {
             const gameId = document.getElementById('tournamentGame').value;
             const name = document.getElementById('tournamentName').value.trim();
             const description = document.getElementById('tournamentDescription').value.trim();
+			const autoStartPlayers = document.getElementById('autoStartPlayers').value;
             
             if (!gameId || !name) {
                 showMessage('Bitte füllen Sie alle Pflichtfelder aus.', 'error');
@@ -1646,7 +1668,7 @@ function getScoreLabel(gameId) {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ name, description })
+                    body: JSON.stringify({ name, description, autoStartPlayerCount: autoStartPlayers ? parseInt(autoStartPlayers) : null })
                 });
                 
                 if (response.ok) {

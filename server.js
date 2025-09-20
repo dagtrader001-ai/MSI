@@ -566,7 +566,21 @@ app.post('/games/:gameId/tournaments/:tournamentId/register', async (req, res) =
             gamertags: user.gamertags,
             registrationTime: new Date().toISOString()
         });
-
+if (tournament.autoStartPlayerCount && 
+    tournament.participants.length >= tournament.autoStartPlayerCount &&
+    tournament.status === 'registration') {
+    
+    console.log(`Auto-starting tournament ${tournament.name} with ${tournament.participants.length} players`);
+    
+    // Bracket erstellen
+    const bracket = createSingleEliminationBracket(tournament.participants);
+    
+    tournament.status = 'started';
+    tournament.startedAt = new Date().toISOString();
+    tournament.bracket = bracket;
+    
+    console.log(`Tournament ${tournament.name} automatically started!`);
+}
         await writeGames(gamesData);
 
         res.status(201).json({
@@ -636,10 +650,18 @@ app.post('/games/:gameId/tournaments', async (req, res) => {
     try {
         const { gameId } = req.params;
         const { name, description } = req.body;
+		const { name, description, autoStartPlayerCount } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: 'Turnier-Name ist erforderlich' });
         }
+		
+				if (autoStartPlayerCount) {
+			const validPlayerCounts = [2, 4, 8, 16, 32, 64];
+			if (!validPlayerCounts.includes(parseInt(autoStartPlayerCount))) {
+				return res.status(400).json({ error: 'Ungültige Spieleranzahl für Auto-Start' });
+			}
+		}
 
         const gamesData = await readGames();
         
@@ -649,18 +671,19 @@ app.post('/games/:gameId/tournaments', async (req, res) => {
 
         const tournamentId = `tournament_${Date.now()}`;
         const tournament = {
-            id: tournamentId,
-            name: name.trim(),
-            description: description?.trim() || '',
-            gameId: gameId,
-            status: 'registration',
-            participants: [],
-            bracket: null,
-            createdAt: new Date().toISOString(),
-            startedAt: null,
-            finishedAt: null,
-            winner: null
-        };
+			id: tournamentId,
+			name: name.trim(),
+			description: description?.trim() || '',
+			gameId: gameId,
+			status: 'registration',
+			participants: [],
+			bracket: null,
+			autoStartPlayerCount: autoStartPlayerCount || null, // NEU
+			createdAt: new Date().toISOString(),
+			startedAt: null,
+			finishedAt: null,
+			winner: null
+		};
 
         gamesData.games[gameId].tournaments[tournamentId] = tournament;
 
