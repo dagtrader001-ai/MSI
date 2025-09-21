@@ -51,6 +51,8 @@
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
+		
+		
 
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
@@ -694,6 +696,67 @@
                 grid-template-columns: 1fr;
             }
         }
+		
+		.auto-tournament {
+    position: relative;
+    overflow: hidden;
+}
+
+.auto-tournament::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ffd700, #ffed4e, #ffd700);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+.game-section {
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.5), rgba(15, 15, 26, 0.5));
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid #333;
+}
+
+.auto-tournaments-section {
+    background: linear-gradient(145deg, rgba(255, 215, 0, 0.05), rgba(255, 237, 78, 0.02));
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+.manual-tournaments-section {
+    background: linear-gradient(145deg, rgba(0, 204, 255, 0.05), rgba(0, 255, 136, 0.02));
+    border: 1px solid rgba(0, 204, 255, 0.2);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 768px) {
+    .game-section {
+        padding: 1rem;
+    }
+    
+    .auto-tournaments-section,
+    .manual-tournaments-section {
+        padding: 1rem;
+    }
+    
+    .auto-tournaments-section > div,
+    .manual-tournaments-section > div {
+        grid-template-columns: 1fr !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -941,139 +1004,81 @@
         }
 
         // Display tournaments
-        function displayTournaments() {
-            const tournamentsGrid = document.getElementById('tournamentsGrid');
-            
-            if (filteredTournaments.length === 0) {
-                tournamentsGrid.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">🏆</div>
-                        <h3>Keine Turniere gefunden</h3>
-                        <p>Es sind keine Turniere verfügbar, die Ihren Filterkriterien entsprechen.</p>
-                    </div>
-                `;
-                return;
-            }
+       function displayTournaments() {
+    const tournamentsGrid = document.getElementById('tournamentsGrid');
+    
+    if (filteredTournaments.length === 0) {
+        tournamentsGrid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🏆</div>
+                <h3>Keine Turniere gefunden</h3>
+                <p>Es sind keine Turniere verfügbar, die Ihren Filterkriterien entsprechen.</p>
+            </div>
+        `;
+        return;
+    }
 
-            const tournamentsHTML = filteredTournaments.map(tournament => {
-                const isRegistered = currentUser && tournament.participants.some(p => 
-                    p.walletAddress.toLowerCase() === currentUser.walletAddress.toLowerCase()
-                );
-                
-                const canRegister = tournament.status === 'registration' && currentUser && !isRegistered;
-                const canUnregister = tournament.status === 'registration' && currentUser && isRegistered;
-                
-                return `
-                    <div class="tournament-card ${isRegistered ? 'registered' : ''}">
-                        <div class="tournament-header">
-                            <h3 class="tournament-title">${tournament.name}</h3>
-                            <div class="game-badge">
-                                <span class="game-icon">${tournament.gameIcon}</span>
-                                ${tournament.gameName}
-                            </div>
-                        </div>
-                        
-                        <div class="tournament-status">
-                            <div class="status-dot status-${tournament.status}"></div>
-                            ${getStatusText(tournament.status)}
-                        </div>
-                        
-                        <div class="tournament-info">
-                            <div class="info-row">
-                                <span class="info-label">Erstellt:</span>
-                                <span class="info-value">${formatDate(tournament.createdAt)}</span>
-                            </div>
-                            ${tournament.startedAt ? `
-                                <div class="info-row">
-                                    <span class="info-label">Gestartet:</span>
-                                    <span class="info-value">${formatDate(tournament.startedAt)}</span>
-                                </div>
-                            ` : ''}
-                            ${tournament.finishedAt ? `
-                                <div class="info-row">
-                                    <span class="info-label">Beendet:</span>
-                                    <span class="info-value">${formatDate(tournament.finishedAt)}</span>
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        ${tournament.description ? `
-                            <div class="tournament-description">
-                                ${tournament.description}
-                            </div>
-                        ` : ''}
-						
-						${tournament.autoStartPlayerCount ? `
-    <div style="background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05)); 
-                border: 1px solid #ffd700; border-radius: 10px; padding: 0.8rem; margin: 1rem 0; 
-                color: #ffd700; font-size: 0.9rem; text-align: center; font-weight: bold;">
-        ⚡ Startet automatisch bei ${tournament.autoStartPlayerCount} Spielern!<br>
-        <small style="opacity: 0.8;">${tournament.participants.length}/${tournament.autoStartPlayerCount} angemeldet</small>
-    </div>
-` : ''}
-                        
-                        <div class="participants-section">
-                            <div class="participants-header">
-                                <span class="participants-title">Teilnehmer</span>
-                                <span class="participants-count">${tournament.participants.length}</span>
-                            </div>
-                            ${tournament.participants.length > 0 ? `
-                                <div class="participants-list">
-                                    ${tournament.participants.slice(0, 8).map(participant => {
-                                        const isCurrentUser = currentUser && 
-                                            participant.walletAddress.toLowerCase() === currentUser.walletAddress.toLowerCase();
-                                        return `
-                                            <span class="participant-tag ${isCurrentUser ? 'current-user' : ''}">
-                                                ${participant.platformUsername || participant.username}
-                                            </span>
-                                        `;
-                                    }).join('')}
-                                    ${tournament.participants.length > 8 ? 
-                                        `<span class="participant-tag">+${tournament.participants.length - 8} weitere</span>` : ''
-                                    }
-                                </div>
-                            ` : '<p style="color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 0.5rem;">Noch keine Teilnehmer</p>'}
-                        </div>
-                        
-                        <div class="tournament-actions">
-                            ${!currentUser ? `
-                                <button class="register-btn" disabled>
-                                    <span>🔒</span>
-                                    Wallet verbinden erforderlich
-                                </button>
-                            ` : canRegister ? `
-                                <button class="register-btn" onclick="registerForTournament('${tournament.gameId}', '${tournament.id}')">
-                                    <span>✅</span>
-                                    Registrieren
-                                </button>
-                            ` : canUnregister ? `
-                                <button class="register-btn registered" onclick="unregisterFromTournament('${tournament.gameId}', '${tournament.id}')">
-                                    <span>❌</span>
-                                    Abmelden
-                                </button>
-                            ` : tournament.status === 'started' ? `
-                                <button class="register-btn" disabled>
-                                    <span>🏃‍♂️</span>
-                                    Turnier läuft
-                                </button>
-                            ` : tournament.status === 'finished' ? `
-                                <button class="register-btn" disabled>
-                                    <span>🏁</span>
-                                    Turnier beendet
-                                </button>
-                            ` : `
-                                <button class="register-btn" disabled>
-                                    <span>🚫</span>
-                                    Nicht verfügbar
-                                </button>
-                            `}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            tournamentsGrid.innerHTML = tournamentsHTML;
+    // Gruppiere Turniere nach Spiel
+    const gameGroups = {};
+    filteredTournaments.forEach(tournament => {
+        if (!gameGroups[tournament.gameId]) {
+            gameGroups[tournament.gameId] = {
+                gameName: tournament.gameName,
+                gameIcon: tournament.gameIcon,
+                autoTournaments: [],
+                manualTournaments: []
+            };
         }
+        
+        if (tournament.isAutoTournament) {
+            gameGroups[tournament.gameId].autoTournaments.push(tournament);
+        } else {
+            gameGroups[tournament.gameId].manualTournaments.push(tournament);
+        }
+    });
+
+    // Sortiere Auto-Turniere nach Spieleranzahl
+    Object.values(gameGroups).forEach(group => {
+        group.autoTournaments.sort((a, b) => a.autoStartPlayerCount - b.autoStartPlayerCount);
+    });
+
+    let html = '';
+    
+    // Für jedes Spiel eine Sektion erstellen
+    Object.entries(gameGroups).forEach(([gameId, group]) => {
+        html += `
+            <div class="game-section" style="grid-column: 1 / -1; margin-bottom: 2rem;">
+                <h3 class="game-section-title" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; font-size: 1.8rem; background: linear-gradient(45deg, #ffffff, #00ff88, #00ccff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                    <span style="font-size: 2rem;">${group.gameIcon}</span>
+                    ${group.gameName}
+                </h3>
+                
+                ${group.autoTournaments.length > 0 ? `
+                    <div class="auto-tournaments-section" style="margin-bottom: 2rem;">
+                        <h4 style="color: #00ff88; margin-bottom: 1rem; font-size: 1.2rem;">⚡ Schnelle Turniere (Auto-Start)</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem;">
+                            ${group.autoTournaments.map(tournament => generateTournamentCard(tournament, true)).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${group.manualTournaments.length > 0 ? `
+                    <div class="manual-tournaments-section">
+                        <h4 style="color: #00ccff; margin-bottom: 1rem; font-size: 1.2rem;">🎯 Manuelle Turniere</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+                            ${group.manualTournaments.map(tournament => generateTournamentCard(tournament, false)).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+
+    tournamentsGrid.innerHTML = html;
+    
+    // Grid-Layout anpassen
+    tournamentsGrid.style.display = 'block';
+}
 
         // Get status text
         function getStatusText(status) {
@@ -1202,6 +1207,256 @@
                 location.reload();
             });
         }
+		
+		const additionalStyles = `
+<style>
+.auto-tournament {
+    position: relative;
+    overflow: hidden;
+}
+
+.auto-tournament::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ffd700, #ffed4e, #ffd700);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+.game-section {
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.5), rgba(15, 15, 26, 0.5));
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid #333;
+}
+
+.auto-tournaments-section {
+    background: linear-gradient(145deg, rgba(255, 215, 0, 0.05), rgba(255, 237, 78, 0.02));
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+.manual-tournaments-section {
+    background: linear-gradient(145deg, rgba(0, 204, 255, 0.05), rgba(0, 255, 136, 0.02));
+    border: 1px solid rgba(0, 204, 255, 0.2);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 768px) {
+    .game-section {
+        padding: 1rem;
+    }
+    
+    .auto-tournaments-section,
+    .manual-tournaments-section {
+        padding: 1rem;
+    }
+    
+    .auto-tournaments-section > div,
+    .manual-tournaments-section > div {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+`;
+
+function generateTournamentCard(tournament, isAutoTournament) {
+    const isRegistered = currentUser && tournament.participants.some(p => 
+        p.walletAddress.toLowerCase() === currentUser.walletAddress.toLowerCase()
+    );
+    
+    const canRegister = tournament.status === 'registration' && currentUser && !isRegistered;
+    const canUnregister = tournament.status === 'registration' && currentUser && isRegistered;
+    
+    // Kompakte Card für Auto-Turniere
+    if (isAutoTournament) {
+        return `
+            <div class="tournament-card auto-tournament ${isRegistered ? 'registered' : ''}" 
+                 style="padding: 1.5rem; border: 2px solid ${isRegistered ? '#00ff88' : '#333'}; 
+                        background: linear-gradient(145deg, ${isRegistered ? 'rgba(0, 255, 136, 0.1)' : '#1a1a2e'}, ${isRegistered ? 'rgba(0, 204, 255, 0.05)' : '#0f0f1a'});">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">⚡</span>
+                        <strong style="color: #ffd700;">${tournament.autoStartPlayerCount} Spieler</strong>
+                    </div>
+                    <div class="tournament-status status-${tournament.status}">
+                        <div class="status-dot status-${tournament.status}"></div>
+                        ${getStatusText(tournament.status)}
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.9rem; color: #cccccc;">
+                    <span>Teilnehmer: <strong style="color: #00ccff;">${tournament.participants.length}/${tournament.autoStartPlayerCount}</strong></span>
+                    <span style="font-size: 0.8rem; color: #888;">${formatDate(tournament.createdAt)}</span>
+                </div>
+                
+                ${tournament.participants.length > 0 ? `
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
+                            ${tournament.participants.slice(0, 6).map(participant => {
+                                const isCurrentUser = currentUser && 
+                                    participant.walletAddress.toLowerCase() === currentUser.walletAddress.toLowerCase();
+                                return `
+                                    <span style="background: ${isCurrentUser ? 'linear-gradient(145deg, rgba(0, 255, 136, 0.3), rgba(0, 204, 255, 0.2))' : 'linear-gradient(145deg, #2a2a3e, #1a1a2e)'}; 
+                                                 padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; 
+                                                 color: ${isCurrentUser ? '#00ff88' : '#cccccc'}; border: 1px solid ${isCurrentUser ? '#00ff88' : '#333'};">
+                                        ${participant.platformUsername || participant.username}
+                                    </span>
+                                `;
+                            }).join('')}
+                            ${tournament.participants.length > 6 ? 
+                                `<span style="background: #2a2a3e; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; color: #888;">+${tournament.participants.length - 6}</span>` : ''
+                            }
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="tournament-actions">
+                    ${!currentUser ? `
+                        <button class="register-btn" disabled style="padding: 0.6rem 1rem; font-size: 0.9rem;">
+                            <span>🔒</span>
+                            Wallet verbinden
+                        </button>
+                    ` : canRegister ? `
+                        <button class="register-btn" onclick="registerForTournament('${tournament.gameId}', '${tournament.id}')"
+                                style="padding: 0.6rem 1rem; font-size: 0.9rem;">
+                            <span>⚡</span>
+                            Schnell beitreten
+                        </button>
+                    ` : canUnregister ? `
+                        <button class="register-btn registered" onclick="unregisterFromTournament('${tournament.gameId}', '${tournament.id}')"
+                                style="padding: 0.6rem 1rem; font-size: 0.9rem;">
+                            <span>✖</span>
+                            Verlassen
+                        </button>
+                    ` : `
+                        <button class="register-btn" disabled style="padding: 0.6rem 1rem; font-size: 0.9rem;">
+                            <span>🏃‍♂️</span>
+                            ${tournament.status === 'started' ? 'Läuft' : 'Voll'}
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Normale Card für manuelle Turniere (bestehender Code)
+    return `
+        <div class="tournament-card ${isRegistered ? 'registered' : ''}">
+            <div class="tournament-header">
+                <h3 class="tournament-title">${tournament.name}</h3>
+                <div class="game-badge">
+                    <span class="game-icon">${tournament.gameIcon}</span>
+                    ${tournament.gameName}
+                </div>
+            </div>
+            
+            <div class="tournament-status status-${tournament.status}">
+                <div class="status-dot status-${tournament.status}"></div>
+                ${getStatusText(tournament.status)}
+            </div>
+            
+            <div class="tournament-info">
+                <div class="info-row">
+                    <span class="info-label">Erstellt:</span>
+                    <span class="info-value">${formatDate(tournament.createdAt)}</span>
+                </div>
+                ${tournament.startedAt ? `
+                    <div class="info-row">
+                        <span class="info-label">Gestartet:</span>
+                        <span class="info-value">${formatDate(tournament.startedAt)}</span>
+                    </div>
+                ` : ''}
+            </div>
+            
+            ${tournament.description ? `
+                <div class="tournament-description">
+                    ${tournament.description}
+                </div>
+            ` : ''}
+            
+            ${tournament.autoStartPlayerCount ? `
+                <div style="background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05)); 
+                            border: 1px solid #ffd700; border-radius: 10px; padding: 0.8rem; margin: 1rem 0; 
+                            color: #ffd700; font-size: 0.9rem; text-align: center; font-weight: bold;">
+                    ⚡ Startet automatisch bei ${tournament.autoStartPlayerCount} Spielern!<br>
+                    <small style="opacity: 0.8;">${tournament.participants.length}/${tournament.autoStartPlayerCount} angemeldet</small>
+                </div>
+            ` : ''}
+            
+            <div class="participants-section">
+                <div class="participants-header">
+                    <span class="participants-title">Teilnehmer</span>
+                    <span class="participants-count">${tournament.participants.length}</span>
+                </div>
+                ${tournament.participants.length > 0 ? `
+                    <div class="participants-list">
+                        ${tournament.participants.slice(0, 8).map(participant => {
+                            const isCurrentUser = currentUser && 
+                                participant.walletAddress.toLowerCase() === currentUser.walletAddress.toLowerCase();
+                            return `
+                                <span class="participant-tag ${isCurrentUser ? 'current-user' : ''}">
+                                    ${participant.platformUsername || participant.username}
+                                </span>
+                            `;
+                        }).join('')}
+                        ${tournament.participants.length > 8 ? 
+                            `<span class="participant-tag">+${tournament.participants.length - 8} weitere</span>` : ''
+                        }
+                    </div>
+                ` : '<p style="color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 0.5rem;">Noch keine Teilnehmer</p>'}
+            </div>
+            
+            <div class="tournament-actions">
+                ${!currentUser ? `
+                    <button class="register-btn" disabled>
+                        <span>🔒</span>
+                        Wallet verbinden erforderlich
+                    </button>
+                ` : canRegister ? `
+                    <button class="register-btn" onclick="registerForTournament('${tournament.gameId}', '${tournament.id}')">
+                        <span>✅</span>
+                        Registrieren
+                    </button>
+                ` : canUnregister ? `
+                    <button class="register-btn registered" onclick="unregisterFromTournament('${tournament.gameId}', '${tournament.id}')">
+                        <span>❌</span>
+                        Abmelden
+                    </button>
+                ` : tournament.status === 'started' ? `
+                    <button class="register-btn" disabled>
+                        <span>🏃‍♂️</span>
+                        Turnier läuft
+                    </button>
+                ` : tournament.status === 'finished' ? `
+                    <button class="register-btn" disabled>
+                        <span>🏁</span>
+                        Turnier beendet
+                    </button>
+                ` : `
+                    <button class="register-btn" disabled>
+                        <span>🚫</span>
+                        Nicht verfügbar
+                    </button>
+                `}
+            </div>
+        </div>
+    `;
+}
     </script>
 </body>
 </html>
