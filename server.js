@@ -1585,10 +1585,17 @@ app.get('/admin/stats', async (req, res) => {
 });
 
 // Server start
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server läuft auf http://localhost:${PORT}`);
     console.log(`Admin-Bereich: http://localhost:${PORT}/admin.html`);
     console.log(`Turnierbaum: http://localhost:${PORT}/tournament.html`);
+    
+    try {
+        await autoTournamentManager.initialize();
+        console.log('Auto-Tournament System erfolgreich gestartet');
+    } catch (error) {
+        console.error('Fehler beim Starten des Auto-Tournament Systems:', error);
+    }
 });
 
 // Graceful shutdown
