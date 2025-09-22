@@ -1355,6 +1355,43 @@
         function disconnect() {
             updateDisconnectedUI();
         }
+		
+		function toggleMobileMenu() {
+    const navMenu = document.getElementById('navMenu');
+    const toggle = document.getElementById('mobileToggle');
+    
+    navMenu.classList.toggle('mobile-open');
+    toggle.textContent = navMenu.classList.contains('mobile-open') ? '✕' : '☰';
+}
+
+// Set active page
+function setActivePage() {
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    const navLinks = document.querySelectorAll('.nav-link');
+    
+    navLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentPage || (currentPage === '' && href === 'index.html')) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', setActivePage);
+
+// Close mobile menu when clicking on a link
+document.addEventListener('click', (e) => {
+    const navMenu = document.getElementById('navMenu');
+    const toggle = document.getElementById('mobileToggle');
+    
+    if (e.target.classList.contains('nav-link') && navMenu.classList.contains('mobile-open')) {
+        navMenu.classList.remove('mobile-open');
+        toggle.textContent = '☰';
+    }
+});
 
         // Check if already connected on page load
         async function checkConnection() {
