@@ -1224,7 +1224,7 @@
                 // Sort tournaments by creation date (newest first)
                 allTournaments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 
-                filteredTournaments = [...allTournaments];
+                filteredTournaments = allTournaments.filter(tournament => tournament.status !== 'finished');
                 displayTournaments();
 
             } catch (error) {
@@ -1241,17 +1241,18 @@
 
         // Apply filters
         function applyFilters() {
-            const gameFilter = document.getElementById('gameFilter').value;
-            const statusFilter = document.getElementById('statusFilter').value;
-            
-            filteredTournaments = allTournaments.filter(tournament => {
-                const gameMatch = !gameFilter || tournament.gameId === gameFilter;
-                const statusMatch = !statusFilter || tournament.status === statusFilter;
-                return gameMatch && statusMatch;
-            });
-            
-            displayTournaments();
-        }
+    const gameFilter = document.getElementById('gameFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    filteredTournaments = allTournaments.filter(tournament => {
+        const gameMatch = !gameFilter || tournament.gameId === gameFilter;
+        const statusMatch = !statusFilter || tournament.status === statusFilter;
+        const notFinished = tournament.status !== 'finished'; // Neue Zeile: beendete Turniere ausblenden
+        return gameMatch && statusMatch && notFinished;
+    });
+    
+    displayTournaments();
+}
 
         // Display tournaments
        function displayTournaments() {
@@ -1434,7 +1435,7 @@
 
         // Auto refresh tournaments every 30 seconds
         function startAutoRefresh() {
-            setInterval(loadTournaments, 30000);
+            setInterval(loadTournaments, 5000);
         }
 
         // Initialize

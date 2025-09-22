@@ -932,26 +932,31 @@
             }
         }
 
-        async function loadAvailableGames() {
-            try {
-                console.log('Loading available games...');
-                const response = await fetch('/games/available');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('Available games:', data);
-                availableGames = data.games;
-                renderGameSelector();
-                
-            } catch (error) {
-                console.error('Fehler beim Laden der Spiele:', error);
-                document.getElementById('gameSelect').innerHTML = 
-                    '<option value="">Fehler beim Laden: ' + error.message + '</option>';
-            }
+       async function loadAvailableGames() {
+    try {
+        console.log('Loading available games...');
+        const response = await fetch('/games/available');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
+        const data = await response.json();
+        console.log('Available games:', data);
+        
+        if (data.games && Array.isArray(data.games)) {
+            availableGames = data.games;
+            renderGameSelector();
+        } else {
+            throw new Error('Invalid games data structure');
+        }
+        
+    } catch (error) {
+        console.error('Fehler beim Laden der Spiele:', error);
+        document.getElementById('gameSelect').innerHTML = 
+            '<option value="">Fehler beim Laden der Spiele</option>';
+    }
+}
 
         async function loadGameLeaderboard(gameId) {
             if (!gameId) {
