@@ -144,6 +144,112 @@ async function cleanupOldBackups(backupDir) {
     }
 }
 
+async function restoreFromBackup(backupTimestamp) {
+    try {
+        const backupDir = 'backups';
+        const globalUsersBackup = `${backupDir}/globalUsers_${backupTimestamp}.json`;
+        const gamesBackup = `${backupDir}/games_${backupTimestamp}.json`;
+        
+        let restoredCount = 0;
+        
+        // Restore globalUsers if backup exists
+        try {
+            await fs.access(globalUsersBackup);
+            const backupData = await fs.readFile(globalUsersBackup, 'utf8');
+            await fs.writeFile(GLOBAL_USERS_FILE, backupData, 'utf8');
+            console.log(`✅ globalUsers wiederhergestellt aus: ${globalUsersBackup}`);
+            restoredCount++;
+        } catch (err) {
+            console.log(`⚠️ globalUsers backup nicht gefunden: ${globalUsersBackup}`);
+        }
+        
+        // Restore games if backup exists
+        try {
+            await fs.access(gamesBackup);
+            const backupData = await fs.readFile(gamesBackup, 'utf8');
+            await fs.writeFile(GAMES_FILE, backupData, 'utf8');
+            console.log(`✅ games wiederhergestellt aus: ${gamesBackup}`);
+            restoredCount++;
+        } catch (err) {
+            console.log(`⚠️ games backup nicht gefunden: ${gamesBackup}`);
+        }
+        
+        console.log(`📁 Wiederherstellung abgeschlossen: ${restoredCount} Dateien wiederhergestellt (${backupTimestamp})`);
+        return restoredCount;
+        
+    } catch (error) {
+        console.error('❌ Fehler bei der Wiederherstellung:', error.message);
+        throw error;
+    }
+}
+
+// Load latest backup on startup
+async function loadLatestBackupOnStartup() {
+    try {
+        const backupDir = 'backups';
+        
+        // Check if backup directory exists
+        try {
+            await fs.access(backupDir);
+        } catch {
+            console.log('📁 Kein Backup-Ordner gefunden, verwende Standard-Datenbanken');
+            return false;
+        }
+        
+        // Get all backup files
+        const files = await fs.readdir(backupDir);
+        const backupFiles = files
+            .filter(file => file.endsWith('.json'))
+            .map(file => {
+                const parts = file.split('_');
+                if (parts.length >= 2) {
+                    const timestamp = parts[1].replace('.json', '');
+                    return { file, timestamp };
+                }
+                return null;
+            })
+            .filter(item => item !== null)
+            .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        
+        if (backupFiles.length === 0) {
+            console.log('📁 Keine Backup-Dateien gefunden, verwende Standard-Datenbanken');
+            return false;
+        }
+        
+        // Get latest timestamp
+        const latestTimestamp = backupFiles[0].timestamp;
+        console.log(`📥 Lade neuestes Backup: ${latestTimestamp}`);
+        
+        // Check if we have both files for this timestamp
+        const hasGlobalUsers = backupFiles.some(item => 
+            item.file.startsWith('globalUsers_') && item.timestamp === latestTimestamp
+        );
+        const hasGames = backupFiles.some(item => 
+            item.file.startsWith('games_') && item.timestamp === latestTimestamp
+        );
+        
+        if (!hasGlobalUsers || !hasGames) {
+            console.log('⚠️ Unvollständiges Backup gefunden, verwende Standard-Datenbanken');
+            return false;
+        }
+        
+        // Restore from latest backup
+        const restoredCount = await restoreFromBackup(latestTimestamp);
+        
+        if (restoredCount > 0) {
+            console.log(`✅ Neuestes Backup erfolgreich geladen (${latestTimestamp})`);
+            return true;
+        }
+        
+        return false;
+        
+    } catch (error) {
+        console.error('❌ Fehler beim Laden des Backups:', error.message);
+        console.log('📁 Verwende Standard-Datenbanken stattdessen');
+        return false;
+    }
+}
+
 async function writeGames(data) {
     await fs.writeFile(GAMES_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
@@ -1594,6 +1700,101 @@ app.get('/admin/backup/list', async (req, res) => {
     }
 });
 
+app.post('/admin/backup/restore', async (req, res) => {
+    try {
+        const { timestamp } = req.body;
+        
+        if (!timestamp) {
+            return res.status(400).json({ error: 'Backup-Timestamp ist erforderlich' });
+        }
+        
+        // Aktuellen Stand sichern vor Wiederherstellung
+        console.log('📦 Erstelle Sicherheitsbackup vor Wiederherstellung...');
+        await createBackup();
+        
+        const restoredCount = await restoreFromBackup(timestamp);
+        
+        if (restoredCount === 0) {
+            return res.status(404).json({ error: 'Keine Backup-Dateien für diesen Timestamp gefunden' });
+        }
+        
+        res.json({ 
+            message: `Backup erfolgreich wiederhergestellt (${restoredCount} Dateien)`,
+            timestamp: timestamp,
+            restoredFiles: restoredCount
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Fehler bei der Wiederherstellung: ' + error.message });
+    }
+});
+
+// Get backup details
+app.get('/admin/backup/:timestamp', async (req, res) => {
+    try {
+        const { timestamp } = req.params;
+        const backupDir = 'backups';
+        
+        const details = {
+            timestamp: timestamp,
+            files: {}
+        };
+        
+        // Check globalUsers backup
+        try {
+            const globalUsersPath = `${backupDir}/globalUsers_${timestamp}.json`;
+            await fs.access(globalUsersPath);
+            const stats = await fs.stat(globalUsersPath);
+            details.files.globalUsers = {
+                exists: true,
+                size: stats.size,
+                modified: stats.mtime
+            };
+        } catch {
+            details.files.globalUsers = { exists: false };
+        }
+        
+        // Check games backup
+        try {
+            const gamesPath = `${backupDir}/games_${timestamp}.json`;
+            await fs.access(gamesPath);
+            const stats = await fs.stat(gamesPath);
+            details.files.games = {
+                exists: true,
+                size: stats.size,
+                modified: stats.mtime
+            };
+        } catch {
+            details.files.games = { exists: false };
+        }
+        
+        res.json(details);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Fehler beim Laden der Backup-Details: ' + error.message });
+    }
+});
+
+// Download backup file
+app.get('/admin/backup/download/:filename', async (req, res) => {
+    try {
+        const { filename } = req.params;
+        const backupDir = 'backups';
+        const filePath = `${backupDir}/${filename}`;
+        
+        // Security check - only allow .json files from backup directory
+        if (!filename.endsWith('.json') || filename.includes('..')) {
+            return res.status(400).json({ error: 'Ungültiger Dateiname' });
+        }
+        
+        await fs.access(filePath);
+        res.download(filePath);
+        
+    } catch (error) {
+        res.status(404).json({ error: 'Backup-Datei nicht gefunden' });
+    }
+});
+
 // Export tournament data
 app.get('/games/:gameId/tournaments/:tournamentId/export', async (req, res) => {
     try {
@@ -1698,12 +1899,18 @@ app.listen(PORT, async () => {
     console.log(`📊 Admin-Bereich: http://localhost:${PORT}/admin.html`);
     console.log(`🏆 Turnierbaum: http://localhost:${PORT}/tournament.html`);
     
-    // Dateien beim Start sicherstellen
-    console.log('📋 Initialisiere Datenbanken...');
-    await readGlobalUsers();
-    await readGames();
+    // Load latest backup first
+    console.log('📥 Versuche neuestes Backup zu laden...');
+    const backupLoaded = await loadLatestBackupOnStartup();
     
-    // Backup beim Start erstellen
+    if (!backupLoaded) {
+        // Dateien beim Start sicherstellen (nur wenn kein Backup geladen wurde)
+        console.log('📋 Initialisiere Standard-Datenbanken...');
+        await readGlobalUsers();
+        await readGames();
+    }
+    
+    // Backup nach dem Start erstellen
     console.log('💾 Erstelle Startup-Backup...');
     await createBackup();
     
