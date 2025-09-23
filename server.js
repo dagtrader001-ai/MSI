@@ -214,7 +214,17 @@ async function restoreFromBackup(backupTimestamp) {
 // Load latest backup on startup
 async function loadLatestBackupOnStartup() {
     try {
-        const backupDir = 'backup/list';
+        const backupDir = 'backups';
+		const files = await fs.readdir(backupDir);
+		
+		console.log(`Gefundene Dateien im Backup-Ordner: ${files.length}`);
+
+			// DEBUG: Alle Dateien ausgeben
+			console.log('=== ALLE DATEIEN ===');
+			files.forEach(file => {
+				console.log(`Datei: ${file}`);
+			});
+			console.log('==================');
 		
 		console.log('=== BACKUP PATH DEBUG ===');
         console.log('Current working directory:', process.cwd());
