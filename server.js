@@ -78,26 +78,69 @@ async function createBackup() {
         // Backup-Ordner erstellen falls nicht vorhanden
         try {
             await fs.mkdir(backupDir, { recursive: true });
+            console.log(`Backup-Ordner erstellt/überprüft: ${backupDir}`);
         } catch (err) {
-            // Ordner existiert bereits
+            console.log('Backup-Ordner existiert bereits oder Fehler:', err.message);
         }
         
-        // Dateien kopieren
+        let backupCount = 0;
+        
+        // Dateien kopieren mit besserer Fehlerbehandlung
         try {
+            await fs.access(GLOBAL_USERS_FILE);
             await fs.copyFile(GLOBAL_USERS_FILE, `${backupDir}/globalUsers_${timestamp}.json`);
+            console.log(`✅ globalUsers backup erstellt: globalUsers_${timestamp}.json`);
+            backupCount++;
         } catch (err) {
-            // Datei existiert nicht
+            console.log(`⚠️ globalUsers backup übersprungen: ${err.message}`);
         }
         
         try {
+            await fs.access(GAMES_FILE);
             await fs.copyFile(GAMES_FILE, `${backupDir}/games_${timestamp}.json`);
+            console.log(`✅ games backup erstellt: games_${timestamp}.json`);
+            backupCount++;
         } catch (err) {
-            // Datei existiert nicht
+            console.log(`⚠️ games backup übersprungen: ${err.message}`);
         }
         
-        console.log(`Backup erstellt: ${timestamp}`);
+        console.log(`🔄 Backup abgeschlossen: ${backupCount} Dateien gesichert (${timestamp})`);
+        
+        // Alte Backups bereinigen (nur die letzten 10 behalten)
+        await cleanupOldBackups(backupDir);
+        
     } catch (error) {
-        console.error('Fehler beim Backup:', error);
+        console.error('❌ Fehler beim Backup:', error.message);
+    }
+}
+
+// Neue Funktion nach createBackup hinzufügen:
+async function cleanupOldBackups(backupDir) {
+    try {
+        const files = await fs.readdir(backupDir);
+        const backupFiles = files
+            .filter(file => file.endsWith('.json'))
+            .map(file => ({
+                name: file,
+                path: `${backupDir}/${file}`,
+                time: file.split('_')[1]?.replace('.json', '')
+            }))
+            .sort((a, b) => b.time.localeCompare(a.time));
+
+        // Nur die letzten 10 Backups behalten
+        if (backupFiles.length > 10) {
+            const filesToDelete = backupFiles.slice(10);
+            for (const file of filesToDelete) {
+                try {
+                    await fs.unlink(file.path);
+                    console.log(`🗑️ Altes Backup gelöscht: ${file.name}`);
+                } catch (err) {
+                    console.log(`⚠️ Konnte altes Backup nicht löschen: ${file.name}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.log('⚠️ Backup-Bereinigung übersprungen:', error.message);
     }
 }
 
@@ -1527,6 +1570,30 @@ app.post('/games/:gameId/tournaments/:tournamentId/force-complete', async (req, 
     }
 });
 
+app.post('/admin/backup/create', async (req, res) => {
+    try {
+        await createBackup();
+        res.json({ message: 'Backup erfolgreich erstellt' });
+    } catch (error) {
+        res.status(500).json({ error: 'Fehler beim Erstellen des Backups: ' + error.message });
+    }
+});
+
+// List Backups Endpoint
+app.get('/admin/backup/list', async (req, res) => {
+    try {
+        const backupDir = 'backups';
+        const files = await fs.readdir(backupDir);
+        const backupFiles = files
+            .filter(file => file.endsWith('.json'))
+            .sort((a, b) => b.localeCompare(a));
+        
+        res.json({ backups: backupFiles });
+    } catch (error) {
+        res.status(500).json({ error: 'Fehler beim Laden der Backup-Liste: ' + error.message });
+    }
+});
+
 // Export tournament data
 app.get('/games/:gameId/tournaments/:tournamentId/export', async (req, res) => {
     try {
@@ -1627,23 +1694,28 @@ app.get('/admin/stats', async (req, res) => {
 
 // Server start
 app.listen(PORT, async () => {
-    console.log(`Server läuft auf http://localhost:${PORT}`);
-    console.log(`Admin-Bereich: http://localhost:${PORT}/admin.html`);
-    console.log(`Turnierbaum: http://localhost:${PORT}/tournament.html`);
+    console.log(`🚀 Server läuft auf http://localhost:${PORT}`);
+    console.log(`📊 Admin-Bereich: http://localhost:${PORT}/admin.html`);
+    console.log(`🏆 Turnierbaum: http://localhost:${PORT}/tournament.html`);
     
     // Dateien beim Start sicherstellen
+    console.log('📋 Initialisiere Datenbanken...');
     await readGlobalUsers();
     await readGames();
     
-    // Optional: Backup beim Start
-    // await createBackup();
+    // Backup beim Start erstellen
+    console.log('💾 Erstelle Startup-Backup...');
+    await createBackup();
     
+    // Auto-Tournament System starten
     try {
         await autoTournamentManager.initialize();
-        console.log('Auto-Tournament System erfolgreich gestartet');
+        console.log('⚡ Auto-Tournament System erfolgreich gestartet');
     } catch (error) {
-        console.error('Fehler beim Starten des Auto-Tournament Systems:', error);
+        console.error('❌ Fehler beim Starten des Auto-Tournament Systems:', error);
     }
+    
+    console.log('✅ Server vollständig initialisiert');
 });
 
 // Graceful shutdown
