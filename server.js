@@ -214,7 +214,13 @@ async function restoreFromBackup(backupTimestamp) {
 // Load latest backup on startup
 async function loadLatestBackupOnStartup() {
     try {
-        const backupDir = 'backups';
+        const backupDir = 'backup/list';
+		
+		console.log('=== BACKUP PATH DEBUG ===');
+        console.log('Current working directory:', process.cwd());
+        console.log('__dirname:', __dirname);
+        console.log('Looking for backups in:', path.resolve(backupDir));
+        console.log('========================');
         
         console.log('🔍 Prüfe Backup-Ordner...');
         
