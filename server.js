@@ -840,7 +840,6 @@ class AutoTournamentManager {
 
         gamesData.games[gameId].tournaments[tournamentId] = tournament;
         await writeGames(gamesData);
-		await this.ensureAutoTournaments();
         
         return tournament;
     }
