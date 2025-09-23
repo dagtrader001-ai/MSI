@@ -778,23 +778,26 @@ class AutoTournamentManager {
     }
 
     async ensureAutoTournaments() {
-        const gamesData = await readGames();
-        let hasChanges = false;
+    const gamesData = await readGames();
+    let hasChanges = false;
 
-        for (const gameId of AUTO_TOURNAMENT_CONFIG.games) {
-            if (!gamesData.games[gameId]) continue;
+    for (const gameId of AUTO_TOURNAMENT_CONFIG.games) {
+        if (!gamesData.games[gameId]) continue;
 
-            for (const size of AUTO_TOURNAMENT_CONFIG.sizes) {
-                const existingTournament = this.findOpenAutoTournament(gamesData.games[gameId], size);
+        for (const size of AUTO_TOURNAMENT_CONFIG.sizes) {
+            const existingTournament = this.findOpenAutoTournament(gamesData.games[gameId], size);
+            
+            if (!existingTournament) {
+                await this.createAutoTournament(gameId, size);
+                hasChanges = true;
+                console.log(`Auto-Turnier erstellt: ${gameId} ${size}P`);
                 
-                if (!existingTournament) {
-                    await this.createAutoTournament(gameId, size);
-                    hasChanges = true;
-                    console.log(`Auto-Turnier erstellt: ${gameId} ${size}P`);
-                }
+                // Kleine Verzögerung zwischen den Erstellungen
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
         }
     }
+}
 
     findOpenAutoTournament(gameData, size) {
         if (!gameData.tournaments) return null;
@@ -807,42 +810,45 @@ class AutoTournamentManager {
     }
 
     async createAutoTournament(gameId, playerCount) {
-        const gamesData = await readGames();
-        const now = new Date();
-        const dateString = now.toLocaleDateString('de-DE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-        const timeString = now.toLocaleTimeString('de-DE', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+    // Frische Daten laden um Konflikte zu vermeiden
+    const gamesData = await readGames();
+    
+    const now = new Date();
+    const dateString = now.toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+    const timeString = now.toLocaleTimeString('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
-        const tournamentId = `auto_tournament_${gameId}_${playerCount}p_${Date.now()}`;
-        const gameName = gamesData.games[gameId].name;
-        
-        const tournament = {
-            id: tournamentId,
-            name: `${gameName} ${playerCount}P - ${dateString} ${timeString}`,
-            description: `Automatisches ${playerCount}-Spieler Turnier`,
-            gameId: gameId,
-            status: 'registration',
-            participants: [],
-            bracket: null,
-            autoStartPlayerCount: playerCount,
-            isAutoTournament: true,
-            createdAt: now.toISOString(),
-            startedAt: null,
-            finishedAt: null,
-            winner: null
-        };
+    const tournamentId = `auto_tournament_${gameId}_${playerCount}p_${Date.now()}`;
+    const gameName = gamesData.games[gameId].name;
+    
+    const tournament = {
+        id: tournamentId,
+        name: `${gameName} ${playerCount}P - ${dateString} ${timeString}`,
+        description: `Automatisches ${playerCount}-Spieler Turnier`,
+        gameId: gameId,
+        status: 'registration',
+        participants: [],
+        bracket: null,
+        autoStartPlayerCount: playerCount,
+        isAutoTournament: true,
+        createdAt: now.toISOString(),
+        startedAt: null,
+        finishedAt: null,
+        winner: null
+    };
 
-        gamesData.games[gameId].tournaments[tournamentId] = tournament;
-        await writeGames(gamesData);
-        
-        return tournament;
-    }
+    gamesData.games[gameId].tournaments[tournamentId] = tournament;
+    await writeGames(gamesData);
+    
+    console.log(`Neues Auto-Turnier erstellt: ${tournament.name}`);
+    return tournament;
+}
 
     async cleanupOldTournaments() {
         const gamesData = await readGames();
@@ -1158,17 +1164,23 @@ async function checkAndAdvanceRound(gamesData, gameId, tournamentId, currentRoun
             
             // Erstelle neues Auto-Turnier
             if (tournament.isAutoTournament) {
-                try {
-                    // WICHTIG: Erst die aktuellen Daten speichern
-                    await writeGames(gamesData);
-                    
-                    // Dann neues Auto-Turnier erstellen
-                    await autoTournamentManager.createAutoTournament(gameId, tournament.autoStartPlayerCount);
-                    console.log(`Ersatz-Auto-Turnier erstellt für ${gameId} ${tournament.autoStartPlayerCount}P`);
-                } catch (error) {
-                    console.error('Fehler beim Erstellen des Ersatz-Turniers:', error);
-                }
-            }
+					try {
+						// WICHTIG: Erst die aktuellen Daten speichern
+						await writeGames(gamesData);
+						
+						// Dann neues Auto-Turnier erstellen - aber erst nach einer kurzen Verzögerung
+						setTimeout(async () => {
+							try {
+								await autoTournamentManager.createAutoTournament(gameId, tournament.autoStartPlayerCount);
+								console.log(`Ersatz-Auto-Turnier erstellt für ${gameId} ${tournament.autoStartPlayerCount}P`);
+							} catch (error) {
+								console.error('Fehler beim Erstellen des Ersatz-Turniers:', error);
+							}
+						}, 1000); // 1 Sekunde Verzögerung
+					} catch (error) {
+						console.error('Fehler beim Erstellen des Ersatz-Turniers:', error);
+					}
+				}
             
         } else if (currentRoundIndex + 1 === tournament.bracket.currentRound) {
             tournament.bracket.currentRound++;
