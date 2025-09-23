@@ -840,6 +840,7 @@ class AutoTournamentManager {
 
         gamesData.games[gameId].tournaments[tournamentId] = tournament;
         await writeGames(gamesData);
+		await this.ensureAutoTournaments();
         
         return tournament;
     }
@@ -1157,16 +1158,14 @@ async function checkAndAdvanceRound(gamesData, gameId, tournamentId, currentRoun
             console.log(`Turnier ${tournament.name} beendet! Gewinner: ${advancingPlayers[0].platformUsername}`);
             
             // NEU: Erstelle Ersatz-Auto-Turnier
-            if (tournament.isAutoTournament) {
-                setTimeout(async () => {
-                    try {
-                        await autoTournamentManager.createAutoTournament(gameId, tournament.autoStartPlayerCount);
-                        console.log(`Ersatz-Auto-Turnier erstellt für ${gameId} ${tournament.autoStartPlayerCount}P`);
-                    } catch (error) {
-                        console.error('Fehler beim Erstellen des Ersatz-Turniers:', error);
-                    }
-                }, 2000);
-            }
+           if (tournament.isAutoTournament) {
+				try {
+					await autoTournamentManager.createAutoTournament(gameId, tournament.autoStartPlayerCount);
+					console.log(`Ersatz-Auto-Turnier erstellt für ${gameId} ${tournament.autoStartPlayerCount}P`);
+				} catch (error) {
+					console.error('Fehler beim Erstellen des Ersatz-Turniers:', error);
+				}
+			}
             
         } else if (currentRoundIndex + 1 === tournament.bracket.currentRound) {
             tournament.bracket.currentRound++;
