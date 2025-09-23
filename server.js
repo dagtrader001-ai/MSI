@@ -23,7 +23,11 @@ async function readGlobalUsers() {
         const data = await fs.readFile(GLOBAL_USERS_FILE, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        return { users: {} };
+        // Datei existiert nicht - erstelle sie mit Standardstruktur
+        const defaultData = { users: {} };
+        await writeGlobalUsers(defaultData);
+        console.log(`${GLOBAL_USERS_FILE} wurde erstellt`);
+        return defaultData;
     }
 }
 
@@ -37,7 +41,8 @@ async function readGames() {
         const data = await fs.readFile(GAMES_FILE, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        return { 
+        // Datei existiert nicht - erstelle sie mit Standardstruktur
+        const defaultData = { 
             games: {
                 fifa: {
                     id: 'fifa',
@@ -51,14 +56,48 @@ async function readGames() {
                     tournaments: {},
                     activeTournamentId: null
                 },
-				chess: {
-					id: 'chess',
-					name: 'Chess',
-					tournaments: {},
-					activeTournamentId: null
-				}
+                chess: {
+                    id: 'chess',
+                    name: 'Chess',
+                    tournaments: {},
+                    activeTournamentId: null
+                }
             }
         };
+        await writeGames(defaultData);
+        console.log(`${GAMES_FILE} wurde erstellt`);
+        return defaultData;
+    }
+}
+
+async function createBackup() {
+    try {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupDir = 'backups';
+        
+        // Backup-Ordner erstellen falls nicht vorhanden
+        try {
+            await fs.mkdir(backupDir, { recursive: true });
+        } catch (err) {
+            // Ordner existiert bereits
+        }
+        
+        // Dateien kopieren
+        try {
+            await fs.copyFile(GLOBAL_USERS_FILE, `${backupDir}/globalUsers_${timestamp}.json`);
+        } catch (err) {
+            // Datei existiert nicht
+        }
+        
+        try {
+            await fs.copyFile(GAMES_FILE, `${backupDir}/games_${timestamp}.json`);
+        } catch (err) {
+            // Datei existiert nicht
+        }
+        
+        console.log(`Backup erstellt: ${timestamp}`);
+    } catch (error) {
+        console.error('Fehler beim Backup:', error);
     }
 }
 
@@ -585,18 +624,6 @@ app.post('/games/:gameId/tournaments/:tournamentId/register', async (req, res) =
         }
 
         await writeGames(gamesData);
-
-        // Wenn Auto-Turnier voll ist und startet, erstelle Ersatz
-        if (tournament.isAutoTournament && tournament.status === 'started') {
-            setTimeout(async () => {
-                try {
-                    await autoTournamentManager.createAutoTournament(gameId, tournament.autoStartPlayerCount);
-                    console.log(`Sofortiges Ersatz-Turnier erstellt für ${gameId} ${tournament.autoStartPlayerCount}P`);
-                } catch (error) {
-                    console.error('Fehler beim Erstellen des Ersatz-Turniers:', error);
-                }
-            }, 1000);
-        }
 
         res.status(201).json({
             message: 'Erfolgreich für Turnier registriert',
@@ -1589,6 +1616,13 @@ app.listen(PORT, async () => {
     console.log(`Server läuft auf http://localhost:${PORT}`);
     console.log(`Admin-Bereich: http://localhost:${PORT}/admin.html`);
     console.log(`Turnierbaum: http://localhost:${PORT}/tournament.html`);
+    
+    // Dateien beim Start sicherstellen
+    await readGlobalUsers();
+    await readGames();
+    
+    // Optional: Backup beim Start
+    // await createBackup();
     
     try {
         await autoTournamentManager.initialize();

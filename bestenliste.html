@@ -948,13 +948,32 @@
             availableGames = data.games;
             renderGameSelector();
         } else {
-            throw new Error('Invalid games data structure');
+            // Fallback: Lade Spiele direkt von /games
+            const gamesResponse = await fetch('/games');
+            const gamesData = await gamesResponse.json();
+            availableGames = Object.entries(gamesData).map(([id, game]) => ({
+                id: id,
+                name: game.name
+            }));
+            renderGameSelector();
         }
         
     } catch (error) {
         console.error('Fehler beim Laden der Spiele:', error);
-        document.getElementById('gameSelect').innerHTML = 
-            '<option value="">Fehler beim Laden der Spiele</option>';
+        // Fallback: Lade Spiele direkt
+        try {
+            const response = await fetch('/games');
+            const data = await response.json();
+            availableGames = Object.entries(data).map(([id, game]) => ({
+                id: id,
+                name: game.name
+            }));
+            renderGameSelector();
+        } catch (fallbackError) {
+            console.error('Auch Fallback fehlgeschlagen:', fallbackError);
+            document.getElementById('gameSelect').innerHTML = 
+                '<option value="">Fehler beim Laden der Spiele</option>';
+        }
     }
 }
 
