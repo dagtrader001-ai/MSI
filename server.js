@@ -146,7 +146,7 @@ async function cleanupOldBackups(backupDir) {
 
 async function restoreFromBackup(backupTimestamp) {
     try {
-        const backupDir = 'backups';
+        const backupDir = 'backup/list';
         const globalUsersBackup = `${backupDir}/globalUsers_${backupTimestamp}.json`;
         const gamesBackup = `${backupDir}/games_${backupTimestamp}.json`;
         
