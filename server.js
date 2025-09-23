@@ -146,7 +146,13 @@ async function cleanupOldBackups(backupDir) {
 
 async function restoreFromBackup(backupTimestamp) {
     try {
-        const backupDir = 'backup/list';
+        const backupDir = path.join(__dirname, 'backups');
+		
+		console.log('=== BACKUP PATH DEBUG ===');
+        console.log('Current working directory:', process.cwd());
+        console.log('__dirname:', __dirname);
+        console.log('Looking for backups in:', path.resolve(backupDir));
+        console.log('========================');
         const globalUsersBackup = `${backupDir}/globalUsers_${backupTimestamp}.json`;
         const gamesBackup = `${backupDir}/games_${backupTimestamp}.json`;
         
