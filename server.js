@@ -751,7 +751,7 @@ app.post('/games/:gameId/tournaments', async (req, res) => {
 
 // Auto-Tournament Verwaltung
 const AUTO_TOURNAMENT_CONFIG = {
-    sizes: [4, 8, 16],
+    sizes: [2, 4, 8, 16],
     games: ['fifa', 'cod', 'chess'],
     cleanupIntervalHours: 24
 };
