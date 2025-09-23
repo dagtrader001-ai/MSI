@@ -152,29 +152,51 @@ async function restoreFromBackup(backupTimestamp) {
         
         let restoredCount = 0;
         
+        console.log(`🔄 Beginne Wiederherstellung für Timestamp: ${backupTimestamp}`);
+        
         // Restore globalUsers if backup exists
         try {
+            console.log(`🔍 Prüfe globalUsers Backup: ${globalUsersBackup}`);
             await fs.access(globalUsersBackup);
+            
             const backupData = await fs.readFile(globalUsersBackup, 'utf8');
+            
+            // Validiere JSON
+            try {
+                JSON.parse(backupData);
+            } catch (jsonError) {
+                throw new Error(`Ungültige JSON in globalUsers Backup: ${jsonError.message}`);
+            }
+            
             await fs.writeFile(GLOBAL_USERS_FILE, backupData, 'utf8');
             console.log(`✅ globalUsers wiederhergestellt aus: ${globalUsersBackup}`);
             restoredCount++;
         } catch (err) {
-            console.log(`⚠️ globalUsers backup nicht gefunden: ${globalUsersBackup}`);
+            console.log(`⚠️ globalUsers backup nicht gefunden oder fehlerhaft: ${err.message}`);
         }
         
         // Restore games if backup exists
         try {
+            console.log(`🔍 Prüfe games Backup: ${gamesBackup}`);
             await fs.access(gamesBackup);
+            
             const backupData = await fs.readFile(gamesBackup, 'utf8');
+            
+            // Validiere JSON
+            try {
+                JSON.parse(backupData);
+            } catch (jsonError) {
+                throw new Error(`Ungültige JSON in games Backup: ${jsonError.message}`);
+            }
+            
             await fs.writeFile(GAMES_FILE, backupData, 'utf8');
             console.log(`✅ games wiederhergestellt aus: ${gamesBackup}`);
             restoredCount++;
         } catch (err) {
-            console.log(`⚠️ games backup nicht gefunden: ${gamesBackup}`);
+            console.log(`⚠️ games backup nicht gefunden oder fehlerhaft: ${err.message}`);
         }
         
-        console.log(`📁 Wiederherstellung abgeschlossen: ${restoredCount} Dateien wiederhergestellt (${backupTimestamp})`);
+        console.log(`📊 Wiederherstellung abgeschlossen: ${restoredCount} Dateien wiederhergestellt (${backupTimestamp})`);
         return restoredCount;
         
     } catch (error) {
@@ -188,9 +210,12 @@ async function loadLatestBackupOnStartup() {
     try {
         const backupDir = 'backups';
         
+        console.log('🔍 Prüfe Backup-Ordner...');
+        
         // Check if backup directory exists
         try {
             await fs.access(backupDir);
+            console.log('✅ Backup-Ordner gefunden');
         } catch {
             console.log('📁 Kein Backup-Ordner gefunden, verwende Standard-Datenbanken');
             return false;
@@ -198,49 +223,85 @@ async function loadLatestBackupOnStartup() {
         
         // Get all backup files
         const files = await fs.readdir(backupDir);
-        const backupFiles = files
-            .filter(file => file.endsWith('.json'))
-            .map(file => {
-                const parts = file.split('_');
-                if (parts.length >= 2) {
-                    const timestamp = parts[1].replace('.json', '');
-                    return { file, timestamp };
+        console.log(`📄 Gefundene Dateien im Backup-Ordner: ${files.length}`);
+        
+        // Filter and parse backup files
+        const backupFiles = [];
+        
+        for (const file of files) {
+            if (file.endsWith('.json')) {
+                console.log(`🔍 Prüfe Datei: ${file}`);
+                
+                // Verbessertes Parsing der Dateinamen
+                let timestamp = null;
+                
+                if (file.startsWith('globalUsers_')) {
+                    timestamp = file.replace('globalUsers_', '').replace('.json', '');
+                } else if (file.startsWith('games_')) {
+                    timestamp = file.replace('games_', '').replace('.json', '');
                 }
-                return null;
-            })
-            .filter(item => item !== null)
-            .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+                
+                if (timestamp) {
+                    const existing = backupFiles.find(bf => bf.timestamp === timestamp);
+                    if (existing) {
+                        existing.files.push(file);
+                    } else {
+                        backupFiles.push({
+                            timestamp: timestamp,
+                            files: [file]
+                        });
+                    }
+                    console.log(`✅ Backup-Datei erkannt: ${file} (${timestamp})`);
+                }
+            }
+        }
+        
+        console.log(`📊 Gefundene Backup-Gruppen: ${backupFiles.length}`);
         
         if (backupFiles.length === 0) {
             console.log('📁 Keine Backup-Dateien gefunden, verwende Standard-Datenbanken');
             return false;
         }
         
-        // Get latest timestamp
-        const latestTimestamp = backupFiles[0].timestamp;
-        console.log(`📥 Lade neuestes Backup: ${latestTimestamp}`);
+        // Sort by timestamp (newest first)
+        backupFiles.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
         
-        // Check if we have both files for this timestamp
-        const hasGlobalUsers = backupFiles.some(item => 
-            item.file.startsWith('globalUsers_') && item.timestamp === latestTimestamp
-        );
-        const hasGames = backupFiles.some(item => 
-            item.file.startsWith('games_') && item.timestamp === latestTimestamp
-        );
+        console.log('🔍 Suche nach vollständigstem Backup...');
         
-        if (!hasGlobalUsers || !hasGames) {
-            console.log('⚠️ Unvollständiges Backup gefunden, verwende Standard-Datenbanken');
-            return false;
+        // Find the most recent complete backup (having both files)
+        for (const backup of backupFiles) {
+            console.log(`⏰ Prüfe Backup-Gruppe: ${backup.timestamp}`);
+            console.log(`📄 Dateien: ${backup.files.join(', ')}`);
+            
+            const hasGlobalUsers = backup.files.some(f => f.startsWith('globalUsers_'));
+            const hasGames = backup.files.some(f => f.startsWith('games_'));
+            
+            console.log(`👤 globalUsers vorhanden: ${hasGlobalUsers}`);
+            console.log(`🎮 games vorhanden: ${hasGames}`);
+            
+            if (hasGlobalUsers && hasGames) {
+                console.log(`✅ Vollständiges Backup gefunden: ${backup.timestamp}`);
+                
+                try {
+                    const restoredCount = await restoreFromBackup(backup.timestamp);
+                    
+                    if (restoredCount > 0) {
+                        console.log(`🎉 Neuestes Backup erfolgreich geladen (${backup.timestamp})`);
+                        return true;
+                    } else {
+                        console.log(`⚠️ Backup konnte nicht wiederhergestellt werden`);
+                    }
+                } catch (error) {
+                    console.error(`❌ Fehler beim Wiederherstellen des Backups ${backup.timestamp}:`, error.message);
+                    console.log('🔄 Versuche nächstes Backup...');
+                    continue;
+                }
+            } else {
+                console.log(`⚠️ Unvollständiges Backup (${backup.timestamp}), überspringe...`);
+            }
         }
         
-        // Restore from latest backup
-        const restoredCount = await restoreFromBackup(latestTimestamp);
-        
-        if (restoredCount > 0) {
-            console.log(`✅ Neuestes Backup erfolgreich geladen (${latestTimestamp})`);
-            return true;
-        }
-        
+        console.log('⚠️ Kein verwendbares Backup gefunden, verwende Standard-Datenbanken');
         return false;
         
     } catch (error) {
@@ -1893,6 +1954,7 @@ app.get('/admin/stats', async (req, res) => {
     }
 });
 
+// Server start
 // Server start
 app.listen(PORT, async () => {
     console.log(`🚀 Server läuft auf http://localhost:${PORT}`);
